@@ -14,19 +14,30 @@ app.post('/api/generate', async (req, res) => {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return res.status(500).json({ error: 'API key not configured.' });
   try {
+    const body = {
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 8000,
+      messages: req.body.messages
+    };
+    console.log('Calling Anthropic with model:', body.model);
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-             },
-      body: JSON.stringify(req.body)
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify(body)
     });
     const data = await response.json();
-    if (!response.ok) return res.status(response.status).json(data);
+    console.log('Anthropic response status:', response.status);
+    if (!response.ok) {
+      console.log('Anthropic error:', JSON.stringify(data));
+      return res.status(response.status).json(data);
+    }
     res.json(data);
   } catch (err) {
+    console.log('Fetch error:', err.message);
     res.status(500).json({ error: 'Proxy failed: ' + err.message });
   }
 });
