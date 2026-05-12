@@ -7,7 +7,7 @@ app.use(express.json({ limit: '2mb' }));
 
 // Serve index.html at the root URL
 app.get('/', (req, res) => {
-  res.sendFile(__dirname + '/index.html');
+  res.sendFile(require('path').resolve(__dirname, 'index.html'));
 });
 
 // Proxy route to Anthropic API
