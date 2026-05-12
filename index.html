@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://unpkg.com/docx@8.5.0/build/index.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -701,7 +702,11 @@
     <div class="export-bar">
       <button class="export-btn" id="exportBtn" onclick="exportPDF()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        Export PDF Report
+        Export PDF
+      </button>
+      <button class="export-btn" id="exportWordBtn" onclick="exportWord()" style="background: #2d6a9f;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        Export Word
       </button>
     </div>
   </div>
@@ -878,7 +883,7 @@ For the BOQ include ALL of the following line items for Class ${selectedLPS} LPS
 Ensure qty × rate = amount for every item.`;
 
     try {
-      const response = await fetch('/api/generate', {
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1377,6 +1382,361 @@ Ensure qty × rate = amount for every item.`;
       const btn=document.getElementById('exportBtn');
       btn.disabled=false;
       btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Export PDF Report';
+    }
+  }
+
+  // ─── WORD EXPORT ─────────────────────────────────────────────────────────────
+
+  async function exportWord() {
+    if (!reportData) return;
+    const btn = document.getElementById('exportWordBtn');
+    btn.disabled = true;
+    btn.textContent = 'Generating Word...';
+
+    try {
+      const { Document, Paragraph, Table, TableRow, TableCell, TextRun, HeadingLevel,
+              AlignmentType, WidthType, BorderStyle, ShadingType, Packer } = docx;
+
+      const d = reportData;
+      const m = d._meta;
+      const ld = d.lightning_data || {};
+      const ra = d.risk_assessment || {};
+      const bod = d.basis_of_design || {};
+      const boqItems = (d.boq && d.boq.items) ? d.boq.items : [];
+      const boqTotal = boqItems.reduce((s, i) => s + Number(i.amount || 0), 0);
+      const today = new Date().toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' });
+
+      // Colour helpers
+      const NAVY = '1A3A5C';
+      const GOLD = 'C8A84B';
+      const LGREY = 'F0EDE6';
+      const WHITE = 'FFFFFF';
+
+      function heading(text, level) {
+        return new Paragraph({
+          text,
+          heading: level || HeadingLevel.HEADING_2,
+          spacing: { before: 240, after: 120 },
+          shading: level === HeadingLevel.HEADING_1 ? { type: ShadingType.SOLID, color: NAVY, fill: NAVY } : undefined,
+          run: { color: level === HeadingLevel.HEADING_1 ? WHITE : NAVY, bold: true }
+        });
+      }
+
+      function para(text, opts) {
+        return new Paragraph({
+          children: [new TextRun({ text: String(text || ''), size: 20, ...(opts || {}) })],
+          spacing: { after: 80 }
+        });
+      }
+
+      function bullet(text) {
+        return new Paragraph({
+          children: [new TextRun({ text: String(text || ''), size: 20 })],
+          bullet: { level: 0 },
+          spacing: { after: 60 }
+        });
+      }
+
+      function sectionTitle(text) {
+        return new Paragraph({
+          children: [new TextRun({ text: text.toUpperCase(), bold: true, color: WHITE, size: 22 })],
+          shading: { type: ShadingType.SOLID, color: NAVY, fill: NAVY },
+          spacing: { before: 300, after: 120 },
+          indent: { left: 120 }
+        });
+      }
+
+      function subTitle(text) {
+        return new Paragraph({
+          children: [new TextRun({ text, bold: true, color: NAVY, size: 20 })],
+          spacing: { before: 160, after: 60 },
+          border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: GOLD } }
+        });
+      }
+
+      function infoRow(label, value) {
+        return new TableRow({
+          children: [
+            new TableCell({
+              children: [new Paragraph({ children: [new TextRun({ text: label.toUpperCase(), size: 16, color: '666666', bold: true })] })],
+              shading: { type: ShadingType.SOLID, color: LGREY, fill: LGREY },
+              width: { size: 35, type: WidthType.PERCENTAGE },
+              margins: { top: 60, bottom: 60, left: 120, right: 120 }
+            }),
+            new TableCell({
+              children: [new Paragraph({ children: [new TextRun({ text: String(value || 'TBC'), size: 20, bold: true, color: NAVY })] })],
+              width: { size: 65, type: WidthType.PERCENTAGE },
+              margins: { top: 60, bottom: 60, left: 120, right: 120 }
+            })
+          ]
+        });
+      }
+
+      function infoTable(pairs) {
+        return new Table({
+          width: { size: 100, type: WidthType.PERCENTAGE },
+          rows: pairs.map(p => infoRow(p[0], p[1])),
+          margins: { top: 0, bottom: 0, left: 0, right: 0 }
+        });
+      }
+
+      function riskTable(components) {
+        const headerRow = new TableRow({
+          children: ['Component','Description','Est. Value','Tolerable','Verdict'].map(h =>
+            new TableCell({
+              children: [new Paragraph({ children: [new TextRun({ text: h, bold: true, color: WHITE, size: 18 })] })],
+              shading: { type: ShadingType.SOLID, color: NAVY, fill: NAVY },
+              margins: { top: 60, bottom: 60, left: 100, right: 100 }
+            })
+          )
+        });
+        const dataRows = (components || []).map(r => {
+          const v = (r.verdict || '').toUpperCase();
+          const vColor = v.includes('EXCEED') ? 'a32d2d' : v.includes('MARGIN') ? '854f0b' : '3b6d11';
+          return new TableRow({
+            children: [
+              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: r.component, bold: true, color: NAVY, size: 18 })] })], margins: { top:60,bottom:60,left:100,right:100 } }),
+              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: r.description, size: 18 })] })], margins: { top:60,bottom:60,left:100,right:100 } }),
+              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: r.value, size: 18 })] })], margins: { top:60,bottom:60,left:100,right:100 } }),
+              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: r.tolerable, size: 18 })] })], margins: { top:60,bottom:60,left:100,right:100 } }),
+              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: r.verdict || '', bold: true, color: vColor, size: 18 })] })], margins: { top:60,bottom:60,left:100,right:100 } }),
+            ]
+          });
+        });
+        return new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [headerRow, ...dataRows] });
+      }
+
+      function boqTableDoc(items, total) {
+        const headers = ['Item','Description','Unit','Qty','Rate (ZAR)','Amount (ZAR)'];
+        const headerRow = new TableRow({
+          children: headers.map(h => new TableCell({
+            children: [new Paragraph({ children: [new TextRun({ text: h, bold: true, color: WHITE, size: 18 })] })],
+            shading: { type: ShadingType.SOLID, color: NAVY, fill: NAVY },
+            margins: { top:60,bottom:60,left:80,right:80 }
+          }))
+        });
+        const dataRows = items.map((i, idx) => new TableRow({
+          children: [
+            new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: String(i.item), bold: true, color: NAVY, size: 18 })] })], shading: idx%2===1?{type:ShadingType.SOLID,color:LGREY,fill:LGREY}:undefined, margins:{top:60,bottom:60,left:80,right:80} }),
+            new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: i.description, size: 18 })] })], shading: idx%2===1?{type:ShadingType.SOLID,color:LGREY,fill:LGREY}:undefined, margins:{top:60,bottom:60,left:80,right:80} }),
+            new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: i.unit, size: 18 })] })], shading: idx%2===1?{type:ShadingType.SOLID,color:LGREY,fill:LGREY}:undefined, margins:{top:60,bottom:60,left:80,right:80} }),
+            new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: String(i.qty), size: 18 })] })], shading: idx%2===1?{type:ShadingType.SOLID,color:LGREY,fill:LGREY}:undefined, margins:{top:60,bottom:60,left:80,right:80} }),
+            new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: fmt(i.rate), size: 18 })] })], shading: idx%2===1?{type:ShadingType.SOLID,color:LGREY,fill:LGREY}:undefined, margins:{top:60,bottom:60,left:80,right:80} }),
+            new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: fmt(i.amount), bold: true, size: 18 })] })], shading: idx%2===1?{type:ShadingType.SOLID,color:LGREY,fill:LGREY}:undefined, margins:{top:60,bottom:60,left:80,right:80} }),
+          ]
+        }));
+        const totalRow = new TableRow({
+          children: [
+            new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: 'PROVISIONAL TOTAL (EXCL. VAT)', bold: true, color: WHITE, size: 20 })] })], columnSpan: 5, shading:{type:ShadingType.SOLID,color:NAVY,fill:NAVY}, margins:{top:80,bottom:80,left:100,right:100} }),
+            new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: 'R ' + fmt(total), bold: true, color: GOLD, size: 22 })] })], shading:{type:ShadingType.SOLID,color:NAVY,fill:NAVY}, margins:{top:80,bottom:80,left:100,right:100} }),
+          ]
+        });
+        return new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [headerRow, ...dataRows, totalRow] });
+      }
+
+      // ── Build document ───────────────────────────────────────────────────────
+
+      const children = [
+
+        // Cover header
+        new Paragraph({
+          children: [new TextRun({ text: 'ESTAC  ENGINEERING', bold: true, color: WHITE, size: 40 })],
+          shading: { type: ShadingType.SOLID, color: NAVY, fill: NAVY },
+          spacing: { before: 0, after: 0 },
+          indent: { left: 200 }
+        }),
+        new Paragraph({
+          children: [new TextRun({ text: 'Provisional Lightning Protection Risk Assessment', bold: true, color: GOLD, size: 28 })],
+          shading: { type: ShadingType.SOLID, color: NAVY, fill: NAVY },
+          spacing: { before: 0, after: 240 },
+          indent: { left: 200 }
+        }),
+
+        // Preliminary banner
+        new Paragraph({
+          children: [new TextRun({ text: '⚠  PRELIMINARY — FOR REVIEW ONLY — NOT FOR CONSTRUCTION', bold: true, color: '7a5c10', size: 18 })],
+          shading: { type: ShadingType.SOLID, color: 'F5E9C8', fill: 'F5E9C8' },
+          spacing: { before: 120, after: 240 },
+          indent: { left: 120 }
+        }),
+
+        // Document info table
+        infoTable([
+          ['Document Reference', m.docRef],
+          ['Revision', 'Rev 0 — Provisional'],
+          ['Date of Issue', today],
+          ['Site / Project', m.siteName],
+          ['Location', m.siteLocation + (m.gpsCoords ? '  |  GPS: ' + m.gpsCoords : '')],
+          ['LPS Class Sought', 'Class ' + m.lpsClass + ' (LPL ' + m.lpsClass + ')'],
+          ['Mesh / Spacing', m.spec.mesh],
+          ['Protection Efficiency', m.spec.eff],
+          ['Structure Type', (m.structureType || '').replace(/_/g, ' ')],
+          ['Applicable Standard', 'SANS 62305 / IEC 62305'],
+        ]),
+
+        new Paragraph({ text: '', spacing: { after: 240 } }),
+
+        // Prepared by
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'Prepared by: ', bold: true, color: GOLD, size: 20 }),
+            new TextRun({ text: 'Estac Engineering (Pty) Ltd', bold: true, color: WHITE, size: 20 }),
+          ],
+          shading: { type: ShadingType.SOLID, color: NAVY, fill: NAVY },
+          spacing: { before: 120, after: 60 },
+          indent: { left: 120 }
+        }),
+        new Paragraph({
+          children: [new TextRun({ text: 'AI-assisted provisional assessment — requires review by a registered professional engineer before issue.', color: 'aaaaaa', size: 16, italics: true })],
+          shading: { type: ShadingType.SOLID, color: NAVY, fill: NAVY },
+          spacing: { before: 0, after: 480 },
+          indent: { left: 120 }
+        }),
+
+        // SECTION 1
+        sectionTitle('1. Lightning Data & Site Parameters'),
+        infoTable([
+          ['Ground Flash Density (Ng)', (ld.Ng || 'TBC') + ' flashes/km²/yr'],
+          ['Thunderstorm Days (Td)', (ld.Td || 'TBC') + ' days/yr'],
+          ['Location Factor (Cdb)', ld.Cdb || 'TBC'],
+          ['Data Source', ld.source || 'SAWS / Regional Climatology'],
+        ]),
+        new Paragraph({ text: '', spacing: { after: 120 } }),
+        para(ld.regional_note || '', { italics: true, color: '666666' }),
+
+        // SECTION 2
+        sectionTitle('2. Structure Description'),
+        para(ra.structure_description || ((m.structureType || '') + ' at ' + m.siteLocation)),
+
+        // SECTION 3
+        sectionTitle('3. Risk Analysis — IEC 62305-2'),
+        riskTable(ra.risk_components),
+        new Paragraph({ text: '', spacing: { after: 120 } }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'Overall Risk Level: ', bold: true, size: 20 }),
+            new TextRun({ text: ra.overall_risk_level || 'TBC', bold: true, color: ra.overall_risk_level === 'HIGH' ? 'a32d2d' : ra.overall_risk_level === 'LOW' ? '3b6d11' : '854f0b', size: 20 }),
+            new TextRun({ text: '     Recommended LPS: ', bold: true, size: 20 }),
+            new TextRun({ text: ra.lps_class_justified || 'Class ' + m.lpsClass, bold: true, color: NAVY, size: 20 }),
+          ],
+          spacing: { before: 120, after: 120 }
+        }),
+
+        // SECTION 4
+        sectionTitle('4. Justification'),
+        para(ra.justification || ''),
+
+        // SECTION 5
+        sectionTitle('5. Risk Reduction Measures'),
+        ...(ra.risk_reduction_measures || []).map(r => bullet(r)),
+
+        // SECTION 6
+        sectionTitle('6. Basis of Design'),
+        subTitle('Applicable Standards'),
+        para((bod.applicable_standards || []).join('  |  ')),
+        subTitle('Design Parameters'),
+        ...(bod.design_parameters || []).map(p => bullet(p)),
+        subTitle('Air Termination Network'),
+        para(bod.air_termination || m.spec.air_term),
+        subTitle('Down Conductors'),
+        para(bod.down_conductors || 'TBC per site survey'),
+        subTitle('Earth Termination System'),
+        para(bod.earth_termination || 'TBC per soil resistivity test'),
+        subTitle('Equipotential Bonding'),
+        para(bod.equipotential_bonding || 'TBC'),
+        subTitle('SPD Protection'),
+        para(bod.spd_protection || m.spec.spd),
+        subTitle('Separation Distance'),
+        para(bod.separation_distance || 'To be calculated per IEC 62305-3 Clause 6.3'),
+        subTitle('Provisional Caveats'),
+        ...(bod.provisional_caveats || [
+          'Site survey required to confirm all dimensions and structural details',
+          'Soil resistivity testing required to finalise earthing design and rod spacing',
+          'Final design subject to as-built survey and full DEHN Risk Tool v3.260 calculation',
+          'Certificate of Compliance (COC) to be issued post-installation and testing only'
+        ]).map(c => bullet(c)),
+
+        // ANNEX A
+        new Paragraph({ pageBreakBefore: true }),
+        new Paragraph({
+          children: [new TextRun({ text: 'ANNEX A  —  PROVISIONAL BILL OF QUANTITIES', bold: true, color: NAVY, size: 28 })],
+          shading: { type: ShadingType.SOLID, color: GOLD, fill: GOLD },
+          spacing: { before: 0, after: 120 },
+          indent: { left: 120 }
+        }),
+        para('LPS Class ' + m.lpsClass + ' — ' + m.siteName, { bold: true, color: NAVY, size: 22 }),
+        para(m.siteLocation + '  |  ' + m.docRef + '-BOQ  |  Rev 0  |  ' + today, { color: '888888', size: 16 }),
+        new Paragraph({
+          children: [new TextRun({ text: 'PROVISIONAL RATES — Subject to site survey, final design and supplier quotation.', bold: true, color: '7a5c10', size: 16 })],
+          shading: { type: ShadingType.SOLID, color: 'F5E9C8', fill: 'F5E9C8' },
+          spacing: { before: 120, after: 200 },
+          indent: { left: 120 }
+        }),
+        boqTableDoc(boqItems, boqTotal),
+        new Paragraph({ text: '', spacing: { after: 120 } }),
+        para('VAT @ 15%: R ' + fmt(boqTotal * 0.15) + '  |  Total incl. VAT: R ' + fmt(boqTotal * 1.15), { italics: true, color: '888888' }),
+        new Paragraph({ text: '', spacing: { after: 240 } }),
+        (d.boq || {}).notes ? para((d.boq).notes, { italics: true, color: '888888' }) : new Paragraph({ text: '' }),
+
+        // Sign-off
+        sectionTitle('Document Approval'),
+        new Table({
+          width: { size: 100, type: WidthType.PERCENTAGE },
+          rows: [
+            new TableRow({
+              children: ['Prepared by', 'Reviewed by', 'Approved by'].map(lbl =>
+                new TableCell({
+                  children: [
+                    new Paragraph({ children: [new TextRun({ text: lbl, bold: true, color: NAVY, size: 18 })], spacing: { after: 400 } }),
+                    new Paragraph({ children: [new TextRun({ text: 'Name: ___________________________', size: 18, color: '888888' })], spacing: { after: 120 } }),
+                    new Paragraph({ children: [new TextRun({ text: 'Date: ____________________________', size: 18, color: '888888' })], spacing: { after: 120 } }),
+                    new Paragraph({ children: [new TextRun({ text: 'Signature: _______________________', size: 18, color: '888888' })], spacing: { after: 120 } }),
+                  ],
+                  margins: { top: 120, bottom: 120, left: 120, right: 120 }
+                })
+              )
+            })
+          ]
+        })
+      ];
+
+      const doc = new Document({
+        creator: 'Estac Engineering',
+        title: m.docRef + ' Provisional LPS Risk Assessment',
+        description: 'Provisional Lightning Protection Risk Assessment — ' + m.siteName,
+        styles: {
+          default: {
+            document: {
+              run: { font: 'Calibri', size: 20, color: '1a1a18' },
+              paragraph: { spacing: { line: 276 } }
+            }
+          }
+        },
+        sections: [{
+          properties: {
+            page: {
+              margin: { top: 720, bottom: 720, left: 900, right: 900 }
+            }
+          },
+          children
+        }]
+      });
+
+      const blob = await Packer.toBlob(doc);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = m.docRef + '_Provisional_LPS_Risk_Assessment.docx';
+      a.click();
+      URL.revokeObjectURL(url);
+
+    } catch(err) {
+      alert('Word export failed: ' + err.message);
+      console.error(err);
+    } finally {
+      const btn = document.getElementById('exportWordBtn');
+      btn.disabled = false;
+      btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg> Export Word';
     }
   }
 </script>
