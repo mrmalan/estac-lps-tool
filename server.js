@@ -7,7 +7,7 @@ app.use(cors());
 app.use(express.json({ limit: '2mb' }));
 
 // Serve the HTML tool as the homepage
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname)));
 
 // Proxy route — receives request from browser, adds API key, calls Anthropic
 app.post('/api/generate', async (req, res) => {
