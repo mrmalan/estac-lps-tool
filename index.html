@@ -1,0 +1,1385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Estac Engineering — Provisional LPS Risk Assessment Generator</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --navy: #1a3a5c;
+    --gold: #c8a84b;
+    --gold-light: #f5e9c8;
+    --bg: #f7f6f2;
+    --surface: #ffffff;
+    --surface2: #f0ede6;
+    --border: rgba(26,58,92,0.12);
+    --border2: rgba(26,58,92,0.22);
+    --text-primary: #1a1a18;
+    --text-secondary: #5a5a56;
+    --text-muted: #9a9a94;
+    --red-bg: #fcebeb; --red-text: #a32d2d;
+    --amber-bg: #faeeda; --amber-text: #854f0b;
+    --green-bg: #eaf3de; --green-text: #3b6d11;
+    --blue-bg: #e6f1fb; --blue-text: #185fa5;
+    --radius: 8px;
+    --radius-lg: 12px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141412;
+      --surface: #1e1e1a;
+      --surface2: #26261e;
+      --border: rgba(200,168,75,0.12);
+      --border2: rgba(200,168,75,0.22);
+      --text-primary: #e8e4d8;
+      --text-secondary: #a0a098;
+      --text-muted: #66665e;
+      --red-bg: #2a1010; --red-text: #f09595;
+      --amber-bg: #241800; --amber-text: #fac775;
+      --green-bg: #0a1a04; --green-text: #c0dd97;
+      --blue-bg: #041828; --blue-text: #85b7eb;
+      --gold-light: #2a2010;
+    }
+  }
+
+  body {
+    font-family: 'IBM Plex Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text-primary);
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  .page-header {
+    background: var(--navy);
+    padding: 0;
+    border-bottom: 3px solid var(--gold);
+  }
+
+  .page-header-inner {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 1.2rem 2rem;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .logo-mark {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 22px;
+    font-weight: 500;
+    color: var(--gold);
+    letter-spacing: 0.12em;
+  }
+
+  .logo-divider {
+    width: 1px;
+    height: 32px;
+    background: rgba(200,168,75,0.3);
+  }
+
+  .logo-text h1 {
+    font-size: 14px;
+    font-weight: 500;
+    color: #e8e4d8;
+    letter-spacing: 0.03em;
+  }
+
+  .logo-text p {
+    font-size: 11px;
+    color: rgba(200,168,75,0.75);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-top: 1px;
+  }
+
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2rem;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 0.5px solid var(--border2);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .card-title {
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--navy);
+    margin-bottom: 1rem;
+    padding-bottom: 0.6rem;
+    border-bottom: 0.5px solid var(--gold);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .card-title::before {
+    content: '';
+    display: inline-block;
+    width: 3px;
+    height: 14px;
+    background: var(--gold);
+    border-radius: 2px;
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .form-group.full { grid-column: 1 / -1; }
+
+  label {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+  }
+
+  input, select, textarea {
+    background: var(--surface2);
+    border: 0.5px solid var(--border2);
+    border-radius: var(--radius);
+    padding: 9px 11px;
+    font-size: 13px;
+    font-family: 'IBM Plex Sans', sans-serif;
+    color: var(--text-primary);
+    width: 100%;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    -webkit-appearance: none;
+  }
+
+  input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: var(--navy);
+    box-shadow: 0 0 0 2px rgba(26,58,92,0.1);
+  }
+
+  textarea { resize: vertical; min-height: 64px; }
+
+  .lps-options {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-top: 0.2rem;
+  }
+
+  .lps-card {
+    border: 0.5px solid var(--border2);
+    border-radius: var(--radius);
+    padding: 12px 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+    background: var(--surface);
+    user-select: none;
+  }
+
+  .lps-card:hover { border-color: var(--navy); background: var(--surface2); }
+
+  .lps-card.selected {
+    border: 2px solid var(--navy);
+    background: rgba(26,58,92,0.06);
+  }
+
+  .lps-num {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 22px;
+    font-weight: 500;
+    color: var(--navy);
+  }
+
+  .lps-label {
+    font-size: 10px;
+    color: var(--text-secondary);
+    margin-top: 2px;
+  }
+
+  .lps-mesh {
+    font-size: 10px;
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--text-muted);
+    margin-top: 3px;
+  }
+
+  .generate-btn {
+    width: 100%;
+    padding: 13px 20px;
+    background: var(--navy);
+    color: var(--gold);
+    border: none;
+    border-radius: var(--radius);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    transition: opacity 0.15s, transform 0.1s;
+    margin-top: 0.5rem;
+  }
+
+  .generate-btn:hover { opacity: 0.88; }
+  .generate-btn:active { transform: scale(0.99); }
+  .generate-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  .status-bar {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    background: var(--surface2);
+    border-radius: var(--radius);
+    margin-top: 1rem;
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+
+  .spinner {
+    width: 16px; height: 16px;
+    border: 2px solid var(--border2);
+    border-top-color: var(--navy);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    flex-shrink: 0;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .error-box {
+    display: none;
+    padding: 12px 14px;
+    background: var(--red-bg);
+    border: 0.5px solid #e24b4a;
+    border-radius: var(--radius);
+    font-size: 12px;
+    color: var(--red-text);
+    margin-top: 1rem;
+  }
+
+  .output-area {
+    display: none;
+    margin-top: 1.5rem;
+  }
+
+  .output-tabs {
+    display: flex;
+    border-bottom: 0.5px solid var(--border2);
+    background: var(--surface2);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    overflow: hidden;
+  }
+
+  .tab-btn {
+    padding: 10px 18px;
+    font-size: 12px;
+    font-weight: 500;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+    font-family: 'IBM Plex Sans', sans-serif;
+    letter-spacing: 0.03em;
+  }
+
+  .tab-btn:hover { color: var(--navy); }
+  .tab-btn.active { color: var(--navy); border-bottom-color: var(--gold); }
+
+  .tab-content {
+    display: none;
+    background: var(--surface);
+    border: 0.5px solid var(--border2);
+    border-top: none;
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+    padding: 1.5rem;
+  }
+
+  .tab-content.active { display: block; }
+
+  .doc-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1.2rem;
+    padding-bottom: 0.8rem;
+    border-bottom: 2px solid var(--gold);
+  }
+
+  .doc-logo {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 22px;
+    font-weight: 500;
+    color: var(--navy);
+    letter-spacing: 0.12em;
+  }
+
+  .doc-sub {
+    font-size: 10px;
+    color: var(--gold);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .doc-ref {
+    text-align: right;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+    line-height: 1.9;
+  }
+
+  .doc-title {
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--navy);
+    margin-bottom: 3px;
+  }
+
+  .doc-subtitle {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+  }
+
+  .preliminary-banner {
+    background: var(--gold-light);
+    border: 0.5px solid var(--gold);
+    border-radius: var(--radius);
+    padding: 9px 13px;
+    font-size: 11px;
+    color: #7a5c10;
+    margin-bottom: 1rem;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 1rem;
+  }
+
+  .info-cell {
+    padding: 9px 11px;
+    background: var(--surface2);
+    border-radius: var(--radius);
+    border: 0.5px solid var(--border);
+  }
+
+  .ic-label {
+    font-size: 10px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 2px;
+  }
+
+  .ic-val {
+    font-size: 13px;
+    font-weight: 500;
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--text-primary);
+  }
+
+  .section-h {
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
+    color: var(--navy);
+    margin: 1.1rem 0 0.5rem;
+    padding-bottom: 4px;
+    border-bottom: 0.5px solid var(--gold);
+  }
+
+  .risk-table, .boq-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    margin-bottom: 0.5rem;
+    table-layout: fixed;
+  }
+
+  .risk-table th, .boq-table th {
+    text-align: left;
+    padding: 7px 9px;
+    background: var(--navy);
+    color: var(--gold);
+    font-weight: 500;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .risk-table td, .boq-table td {
+    padding: 7px 9px;
+    border-bottom: 0.5px solid var(--border);
+    color: var(--text-primary);
+    vertical-align: top;
+    word-wrap: break-word;
+  }
+
+  .risk-table tr:last-child td, .boq-table tr:last-child td { border-bottom: none; }
+  .risk-table tr:nth-child(even) td, .boq-table tr:nth-child(even) td { background: var(--surface2); }
+
+  .boq-total {
+    margin-top: 0.5rem;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    align-items: baseline;
+    font-size: 13px;
+    color: var(--text-secondary);
+    padding-top: 10px;
+    border-top: 2px solid var(--navy);
+  }
+
+  .boq-total strong {
+    font-size: 18px;
+    font-weight: 500;
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--navy);
+  }
+
+  .badge-risk {
+    display: inline-block;
+    padding: 2px 9px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .badge-high { background: var(--red-bg); color: var(--red-text); }
+  .badge-med  { background: var(--amber-bg); color: var(--amber-text); }
+  .badge-low  { background: var(--green-bg); color: var(--green-text); }
+  .badge-prov { background: var(--blue-bg); color: var(--blue-text); }
+
+  .prose {
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.75;
+    margin-bottom: 0.4rem;
+  }
+
+  .doc-footer {
+    margin-top: 1.2rem;
+    padding-top: 0.8rem;
+    border-top: 0.5px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: var(--text-muted);
+    font-family: 'IBM Plex Mono', monospace;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .export-bar {
+    display: flex;
+    justify-content: flex-end;
+    padding: 0.75rem 1rem;
+    background: var(--surface2);
+    border-top: 0.5px solid var(--border2);
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+    gap: 8px;
+    margin-top: -1px;
+  }
+
+  .export-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background: var(--navy);
+    color: var(--gold);
+    border: none;
+    border-radius: var(--radius);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    letter-spacing: 0.04em;
+    transition: opacity 0.15s;
+  }
+
+  .export-btn:hover { opacity: 0.85; }
+  .export-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .export-btn svg { flex-shrink: 0; }
+
+  .risk-row-summary {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 0.8rem;
+    flex-wrap: wrap;
+  }
+
+  .risk-label-sm {
+    font-size: 11px;
+    color: var(--text-secondary);
+  }
+
+  .mono-sm {
+    font-size: 12px;
+    font-weight: 500;
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--text-primary);
+  }
+
+  @media (max-width: 600px) {
+    .container { padding: 1rem; }
+    .form-grid { grid-template-columns: 1fr; }
+    .lps-options { grid-template-columns: repeat(2, 1fr); }
+    .info-grid { grid-template-columns: 1fr; }
+    .risk-table, .boq-table { font-size: 11px; }
+    .page-header-inner { padding: 1rem; }
+  }
+</style>
+</head>
+<body>
+
+<header class="page-header">
+  <div class="page-header-inner">
+    <div class="logo-mark">ESTAC</div>
+    <div class="logo-divider"></div>
+    <div class="logo-text">
+      <h1>Provisional LPS Risk Assessment Generator</h1>
+      <p>SANS 62305 / IEC 62305 · DEHN Risk Tool Methodology</p>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+
+  <div class="card">
+    <div class="card-title">Site Information</div>
+    <div class="form-grid">
+      <div class="form-group full">
+        <label>Site / Project Name</label>
+        <input type="text" id="siteName" placeholder="e.g. Scheppel Boerdery — Toitjie Huis" />
+      </div>
+      <div class="form-group full">
+        <label>Site Location (town, region, province, country)</label>
+        <input type="text" id="siteLocation" placeholder="e.g. Wesselsbron, Free State, South Africa" />
+      </div>
+      <div class="form-group">
+        <label>GPS Coordinates (optional)</label>
+        <input type="text" id="gpsCoords" placeholder="e.g. -27.85, 26.36" />
+      </div>
+      <div class="form-group">
+        <label>Structure Type</label>
+        <select id="structureType">
+          <option value="agricultural">Agricultural building</option>
+          <option value="industrial">Industrial facility</option>
+          <option value="commercial">Commercial building</option>
+          <option value="residential">Residential dwelling</option>
+          <option value="solar_pv">Solar PV plant</option>
+          <option value="telecoms">Telecoms / mast</option>
+          <option value="substation">Substation / switchyard</option>
+          <option value="warehouse">Warehouse / storage</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Roof Type</label>
+        <select id="roofType">
+          <option value="metal_sheeting">Metal sheeting / IBR</option>
+          <option value="concrete">Concrete / flat</option>
+          <option value="tiled">Tiled</option>
+          <option value="thatch">Thatch</option>
+          <option value="open_structure">Open structure (PV racking)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Approx. Footprint (m²)</label>
+        <input type="number" id="footprint" placeholder="e.g. 500" min="1" />
+      </div>
+      <div class="form-group">
+        <label>Building Height (m)</label>
+        <input type="number" id="buildingHeight" placeholder="e.g. 6" min="1" />
+      </div>
+      <div class="form-group">
+        <label>Occupancy / Contents Risk</label>
+        <select id="occupancy">
+          <option value="low">Low — storage, plant</option>
+          <option value="medium" selected>Medium — general occupancy</option>
+          <option value="high">High — public, hospital, school</option>
+          <option value="critical">Critical — data centre, explosives</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Existing LPS?</label>
+        <select id="existingLPS">
+          <option value="none">None</option>
+          <option value="partial">Partial / unknown</option>
+          <option value="class_iv">Class IV (20×20m mesh)</option>
+          <option value="class_iii">Class III (10×10m mesh)</option>
+          <option value="class_ii">Class II (5×5m mesh)</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">LPS Class Sought</div>
+    <div class="lps-options">
+      <div class="lps-card" id="lps-I" onclick="selectLPS('I')">
+        <div class="lps-num">I</div>
+        <div class="lps-label">LPL I · 99%</div>
+        <div class="lps-mesh">5×5m mesh</div>
+      </div>
+      <div class="lps-card" id="lps-II" onclick="selectLPS('II')">
+        <div class="lps-num">II</div>
+        <div class="lps-label">LPL II · 97%</div>
+        <div class="lps-mesh">10×10m mesh</div>
+      </div>
+      <div class="lps-card selected" id="lps-III" onclick="selectLPS('III')">
+        <div class="lps-num">III</div>
+        <div class="lps-label">LPL III · 91%</div>
+        <div class="lps-mesh">15×15m mesh</div>
+      </div>
+      <div class="lps-card" id="lps-IV" onclick="selectLPS('IV')">
+        <div class="lps-num">IV</div>
+        <div class="lps-label">LPL IV · 84%</div>
+        <div class="lps-mesh">20×20m mesh</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Additional Notes</div>
+    <div class="form-group">
+      <textarea id="additionalNotes" placeholder="e.g. Three-phase supply present, SPD protection required at MDB, existing earthing ring, hazardous materials stored on site..."></textarea>
+    </div>
+  </div>
+
+  <button class="generate-btn" id="generateBtn" onclick="generateReport()">
+    Generate Provisional Risk Assessment + BOQ →
+  </button>
+
+  <div class="status-bar" id="statusBar">
+    <div class="spinner"></div>
+    <span id="statusText">Searching for lightning data...</span>
+  </div>
+
+  <div id="errorBox" class="error-box"></div>
+
+  <div class="output-area" id="outputArea">
+    <div class="output-tabs">
+      <button class="tab-btn active" onclick="switchTab('risk', this)">Risk Assessment</button>
+      <button class="tab-btn" onclick="switchTab('boq', this)">Provisional BOQ</button>
+      <button class="tab-btn" onclick="switchTab('notes', this)">Basis of Design</button>
+    </div>
+    <div class="tab-content active" id="tab-risk"></div>
+    <div class="tab-content" id="tab-boq"></div>
+    <div class="tab-content" id="tab-notes"></div>
+    <div class="export-bar">
+      <button class="export-btn" id="exportBtn" onclick="exportPDF()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Export PDF Report
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  let selectedLPS = 'III';
+  let reportData = null;
+
+  function selectLPS(cls) {
+    document.querySelectorAll('.lps-card').forEach(c => c.classList.remove('selected'));
+    document.getElementById('lps-' + cls).classList.add('selected');
+    selectedLPS = cls;
+  }
+
+  function switchTab(tab, btn) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + tab).classList.add('active');
+  }
+
+  function setStatus(msg) {
+    const bar = document.getElementById('statusBar');
+    bar.style.display = 'flex';
+    document.getElementById('statusText').textContent = msg;
+  }
+
+  function hideStatus() {
+    document.getElementById('statusBar').style.display = 'none';
+  }
+
+  function showError(msg) {
+    const box = document.getElementById('errorBox');
+    box.style.display = 'block';
+    box.textContent = msg;
+  }
+
+  function hideError() {
+    document.getElementById('errorBox').style.display = 'none';
+  }
+
+  function getDocRef() {
+    const yr = new Date().getFullYear();
+    const num = String(Math.floor(Math.random() * 900) + 100).padStart(3, '0');
+    return 'EST-LPS-' + yr + '-' + num;
+  }
+
+  function fmt(n) {
+    return Number(n).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function verdictBadge(v) {
+    if (!v) return '';
+    const u = v.toUpperCase();
+    if (u.includes('EXCEED')) return '<span class="badge-risk badge-high">' + v + '</span>';
+    if (u.includes('MARGIN')) return '<span class="badge-risk badge-med">' + v + '</span>';
+    return '<span class="badge-risk badge-low">' + v + '</span>';
+  }
+
+  async function generateReport() {
+    const siteName = document.getElementById('siteName').value.trim();
+    const siteLocation = document.getElementById('siteLocation').value.trim();
+    const gpsCoords = document.getElementById('gpsCoords').value.trim();
+    const structureType = document.getElementById('structureType').value;
+    const roofType = document.getElementById('roofType').value;
+    const footprint = document.getElementById('footprint').value;
+    const buildingHeight = document.getElementById('buildingHeight').value;
+    const occupancy = document.getElementById('occupancy').value;
+    const existingLPS = document.getElementById('existingLPS').value;
+    const additionalNotes = document.getElementById('additionalNotes').value.trim();
+
+    if (!siteName || !siteLocation) {
+      showError('Please enter a site name and location before generating.');
+      return;
+    }
+
+    hideError();
+    document.getElementById('generateBtn').disabled = true;
+    document.getElementById('outputArea').style.display = 'none';
+
+    const lpsSpecs = {
+      'I':   { mesh: '5×5m',   eff: '99%', rods: 8, air_term: 'Franklin rods 3m at 5m spacing or mesh conductor', spd: 'Type 1+2 (100kA 10/350µs) at POE + Type 2 (40kA 8/20µs) at sub-DBs', note: 'Highest protection — explosives, data centres' },
+      'II':  { mesh: '10×10m', eff: '97%', rods: 6, air_term: 'Franklin rods 2m at 10m spacing or mesh conductor', spd: 'Type 1+2 (50kA 10/350µs) at POE + Type 2 (20kA 8/20µs) at sub-DBs', note: 'Hospitals, public assembly' },
+      'III': { mesh: '15×15m', eff: '91%', rods: 4, air_term: 'Franklin rods at 15m spacing or mesh conductor', spd: 'Type 1+2 (25kA 10/350µs) at POE + Type 2 (10kA 8/20µs) at sub-DBs', note: 'Standard commercial / industrial' },
+      'IV':  { mesh: '20×20m', eff: '84%', rods: 4, air_term: 'Franklin rods at 20m spacing or mesh conductor', spd: 'Type 2 (20kA 8/20µs) at POE + Type 2 at sub-DBs', note: 'Low-risk structures' }
+    };
+
+    const spec = lpsSpecs[selectedLPS];
+    const docRef = getDocRef();
+
+    setStatus('Searching for lightning ground flash density data for ' + siteLocation + '...');
+
+    const prompt = `You are a senior lightning protection design engineer at Estac Engineering in South Africa. 
+You must generate a structured provisional LPS risk assessment and BOQ for the following site.
+
+SITE DETAILS:
+- Site Name: ${siteName}
+- Location: ${siteLocation}${gpsCoords ? ' (GPS: ' + gpsCoords + ')' : ''}
+- Structure Type: ${structureType.replace(/_/g,' ')}
+- Roof Type: ${roofType.replace(/_/g,' ')}
+- Footprint: ${footprint || 'TBC'} m²
+- Height: ${buildingHeight || 'TBC'} m
+- Occupancy / Contents Risk: ${occupancy}
+- Existing LPS: ${existingLPS.replace(/_/g,' ')}
+- LPS Class Sought: Class ${selectedLPS} (${spec.mesh} mesh, ${spec.eff} efficiency, LPL ${selectedLPS})
+- Additional Notes: ${additionalNotes || 'None'}
+
+STANDARDS: SANS 62305 / IEC 62305-1 through -4. Use DEHN Risk Tool methodology references.
+
+TASK: Using your knowledge of lightning climatology for ${siteLocation} and South Africa/regional data, produce a comprehensive response in STRICT JSON format with NO markdown or code fences.
+
+The JSON must have exactly these keys:
+
+{
+  "lightning_data": {
+    "Ng": "<ground flash density flashes/km²/year>",
+    "Td": "<thunderstorm days per year>",
+    "source": "<data source or reference>",
+    "Cdb": "<location factor per IEC 62305-2>",
+    "regional_note": "<1-2 sentence note on lightning severity for this region>"
+  },
+  "risk_assessment": {
+    "structure_description": "<brief description of structure>",
+    "risk_components": [
+      { "component": "Ra", "description": "Risk of injury to living beings", "value": "<calculated or estimated>", "tolerable": "1×10⁻⁵", "verdict": "EXCEEDS / WITHIN / MARGINAL" },
+      { "component": "Rb", "description": "Risk of physical damage", "value": "<calculated or estimated>", "tolerable": "1×10⁻³", "verdict": "EXCEEDS / WITHIN / MARGINAL" },
+      { "component": "Rc", "description": "Risk of failure of internal systems", "value": "<calculated or estimated>", "tolerable": "1×10⁻³", "verdict": "EXCEEDS / WITHIN / MARGINAL" }
+    ],
+    "overall_risk_level": "HIGH / MEDIUM / LOW",
+    "lps_class_justified": "Class I / Class II / Class III / Class IV",
+    "justification": "<2-3 sentences justifying the recommended LPS class>",
+    "risk_reduction_measures": ["<measure 1>", "<measure 2>", "<measure 3>"]
+  },
+  "boq": {
+    "currency": "ZAR",
+    "items": [
+      { "item": "1", "description": "<description>", "unit": "<unit>", "qty": <number>, "rate": <number>, "amount": <number> }
+    ],
+    "notes": "<provisional BOQ notes>"
+  },
+  "basis_of_design": {
+    "applicable_standards": ["SANS 62305-1", "SANS 62305-2", "SANS 62305-3", "SANS 62305-4", "SANS 10142-1"],
+    "design_parameters": ["<param 1>", "<param 2>", "<param 3>", "<param 4>"],
+    "air_termination": "${spec.air_term}",
+    "down_conductors": "<down conductor spacing and routing for Class ${selectedLPS}>",
+    "earth_termination": "<earthing ring and rod requirements for Class ${selectedLPS} — ${spec.rods} earth rods minimum>",
+    "equipotential_bonding": "<bonding requirements>",
+    "spd_protection": "${spec.spd}",
+    "separation_distance": "<physical separation note>",
+    "provisional_caveats": ["Site survey required to confirm dimensions", "Soil resistivity testing required to finalise earthing design", "Final design subject to as-built survey and DEHN Risk Tool calculation", "COC to be issued post-installation and testing"]
+  }
+}
+
+For the BOQ include ALL of the following line items for Class ${selectedLPS} LPS with realistic South African ZAR rates (2024/2025):
+1. Preliminary and general / mobilisation (allow)
+2. LPS design and risk assessment report (professional fee)
+3. Air termination network — mesh conductor 25mm² Al or Cu (per metre, based on ${footprint || '500'}m² footprint)
+4. Air termination — Franklin rod air terminals (based on mesh and footprint)
+5. Down conductors 50mm² Cu tape (4 down conductors × building height)
+6. Earth termination — copper-bonded earth rods 1.5m (minimum ${spec.rods} per earthing ring)
+7. Earthing ring conductor 50mm² Cu tape buried (perimeter estimate)
+8. Copper clad earth rod driving and testing
+9. Earthing compound / bentonite (bags)
+10. SPD Type 1+2 at main DB (supply and install)
+11. SPD Type 2 at sub-distribution boards (allow 2 units)
+12. Equipotential bonding conductor and clamps (allow)
+13. Fixing hardware, cable clips, support brackets (allow)
+14. LPS continuity and earth resistance testing (per point)
+15. Certificate of Compliance (COC)
+16. Commissioning and handover documentation
+
+Ensure qty × rate = amount for every item.`;
+
+    try {
+      const response = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 8000,
+          tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+          messages: [{ role: 'user', content: prompt }]
+        })
+      });
+
+      if (!response.ok) throw new Error('API error ' + response.status);
+
+      setStatus('Processing lightning data and calculating risk assessment...');
+
+      const data = await response.json();
+      let fullText = data.content.filter(b => b.type === 'text').map(b => b.text).join('\n');
+      fullText = fullText.replace(/```json[\s\S]*?```|```[\s\S]*?```/g, m => m.replace(/```json|```/g, '')).trim();
+
+      // Extract the outermost JSON object
+      const jsonMatch = fullText.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error('Could not parse structured response. Please try again.');
+
+      let jsonStr = jsonMatch[0];
+
+      // Repair truncated JSON: close any open arrays and objects
+      function repairJson(str) {
+        // Count open brackets/braces to determine what needs closing
+        let opens = [];
+        let inString = false;
+        let escape = false;
+        for (let i = 0; i < str.length; i++) {
+          const c = str[i];
+          if (escape) { escape = false; continue; }
+          if (c === '\\' && inString) { escape = true; continue; }
+          if (c === '"') { inString = !inString; continue; }
+          if (inString) continue;
+          if (c === '{') opens.push('}');
+          else if (c === '[') opens.push(']');
+          else if (c === '}' || c === ']') opens.pop();
+        }
+        // Remove trailing comma before closing if present
+        let repaired = str.trimEnd();
+        repaired = repaired.replace(/,\s*$/, '');
+        // Close all open structures in reverse order
+        for (let i = opens.length - 1; i >= 0; i--) {
+          repaired += opens[i];
+        }
+        return repaired;
+      }
+
+      // Try parsing directly first, then attempt repair
+      let parsed;
+      try {
+        parsed = JSON.parse(jsonStr);
+      } catch (e) {
+        try {
+          parsed = JSON.parse(repairJson(jsonStr));
+        } catch (e2) {
+          throw new Error('Response JSON could not be parsed even after repair. Please try again. Detail: ' + e2.message);
+        }
+      }
+
+      reportData = parsed;
+      reportData._meta = { docRef, siteName, siteLocation, lpsClass: selectedLPS, spec, structureType, roofType, footprint, buildingHeight, occupancy, gpsCoords };
+
+      hideStatus();
+      renderReport(reportData);
+
+    } catch (err) {
+      hideStatus();
+      showError('Generation failed: ' + err.message);
+    } finally {
+      document.getElementById('generateBtn').disabled = false;
+    }
+  }
+
+  function renderReport(d) {
+    const m = d._meta;
+    const today = new Date().toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' });
+    const ld = d.lightning_data || {};
+    const ra = d.risk_assessment || {};
+    const bod = d.basis_of_design || {};
+    const boqItems = (d.boq && d.boq.items) ? d.boq.items : [];
+    const boqTotal = boqItems.reduce((s, i) => s + Number(i.amount || 0), 0);
+    const overallCls = ra.overall_risk_level === 'HIGH' ? 'badge-high' : ra.overall_risk_level === 'MEDIUM' ? 'badge-med' : ra.overall_risk_level === 'LOW' ? 'badge-low' : 'badge-prov';
+
+    document.getElementById('tab-risk').innerHTML = `
+      <div class="doc-header">
+        <div><div class="doc-logo">ESTAC</div><div class="doc-sub">Engineering</div></div>
+        <div class="doc-ref">${m.docRef}<br>Rev 0 — Provisional<br>${today}</div>
+      </div>
+      <div class="doc-title">Provisional Lightning Protection Risk Assessment</div>
+      <div class="doc-subtitle">${m.siteName} &nbsp;·&nbsp; ${m.siteLocation}</div>
+      <div class="preliminary-banner">⚠ Preliminary — For Review Only · Subject to Site Survey &amp; Full DEHN Risk Tool Analysis</div>
+
+      <div class="section-h">Site &amp; Lightning Parameters</div>
+      <div class="info-grid">
+        <div class="info-cell"><div class="ic-label">Ground Flash Density (Ng)</div><div class="ic-val">${ld.Ng || 'TBC'} flashes/km²/yr</div></div>
+        <div class="info-cell"><div class="ic-label">Thunderstorm Days (Td)</div><div class="ic-val">${ld.Td || 'TBC'} days/yr</div></div>
+        <div class="info-cell"><div class="ic-label">Location Factor (Cdb)</div><div class="ic-val">${ld.Cdb || 'TBC'}</div></div>
+        <div class="info-cell"><div class="ic-label">LPS Class Sought</div><div class="ic-val">Class ${m.lpsClass} (LPL ${m.lpsClass})</div></div>
+        <div class="info-cell"><div class="ic-label">Mesh Size</div><div class="ic-val">${m.spec.mesh}</div></div>
+        <div class="info-cell"><div class="ic-label">Protection Efficiency</div><div class="ic-val">${m.spec.eff}</div></div>
+      </div>
+      <p class="prose">${ld.regional_note || ''}</p>
+      <p class="prose" style="font-size:10px; color:var(--text-muted);">Data source: ${ld.source || 'Regional climatology / SAWS estimate'}</p>
+
+      <div class="section-h">Risk Analysis — IEC 62305-2</div>
+      <table class="risk-table">
+        <colgroup><col style="width:70px"/><col/><col style="width:110px"/><col style="width:90px"/><col style="width:110px"/></colgroup>
+        <tr><th>Component</th><th>Description</th><th>Est. Value</th><th>Tolerable</th><th>Verdict</th></tr>
+        ${(ra.risk_components || []).map(r => `
+        <tr>
+          <td style="font-family:'IBM Plex Mono',monospace; font-weight:500;">${r.component}</td>
+          <td>${r.description}</td>
+          <td style="font-family:'IBM Plex Mono',monospace; font-size:11px;">${r.value}</td>
+          <td style="font-family:'IBM Plex Mono',monospace; font-size:11px;">${r.tolerable}</td>
+          <td>${verdictBadge(r.verdict)}</td>
+        </tr>`).join('')}
+      </table>
+
+      <div class="risk-row-summary">
+        <span class="risk-label-sm">Overall risk:</span>
+        <span class="badge-risk ${overallCls}">${ra.overall_risk_level || 'TBC'}</span>
+        <span class="risk-label-sm" style="margin-left:8px;">Recommended LPS:</span>
+        <span class="mono-sm">${ra.lps_class_justified || 'Class ' + m.lpsClass}</span>
+      </div>
+
+      <div class="section-h">Justification</div>
+      <p class="prose">${ra.justification || ''}</p>
+
+      <div class="section-h">Risk Reduction Measures</div>
+      ${(ra.risk_reduction_measures || []).map(x => `<p class="prose" style="margin-bottom:2px;">• ${x}</p>`).join('')}
+
+      <div class="doc-footer">
+        <span>${m.docRef} · Rev 0 Preliminary</span>
+        <span>Estac Engineering · Requires registered engineer review prior to issue</span>
+      </div>
+    `;
+
+    document.getElementById('tab-boq').innerHTML = `
+      <div class="doc-header">
+        <div><div class="doc-logo">ESTAC</div><div class="doc-sub">Engineering</div></div>
+        <div class="doc-ref">${m.docRef}-BOQ<br>Rev 0 — Provisional<br>${today}</div>
+      </div>
+      <div class="doc-title">Provisional Bill of Quantities — LPS Class ${m.lpsClass}</div>
+      <div class="doc-subtitle">${m.siteName} &nbsp;·&nbsp; ${m.siteLocation}</div>
+      <div class="preliminary-banner">⚠ Provisional Rates · Subject to Site Survey, Final Design &amp; Supplier Quotation</div>
+
+      <table class="boq-table">
+        <colgroup><col style="width:42px"/><col/><col style="width:50px"/><col style="width:50px"/><col style="width:100px"/><col style="width:110px"/></colgroup>
+        <tr><th>Item</th><th>Description</th><th>Unit</th><th style="text-align:right">Qty</th><th style="text-align:right">Rate (ZAR)</th><th style="text-align:right">Amount (ZAR)</th></tr>
+        ${boqItems.map(i => `
+        <tr>
+          <td style="font-family:'IBM Plex Mono',monospace; font-size:11px;">${i.item}</td>
+          <td>${i.description}</td>
+          <td style="font-family:'IBM Plex Mono',monospace; font-size:11px;">${i.unit}</td>
+          <td style="text-align:right; font-family:'IBM Plex Mono',monospace; font-size:11px;">${i.qty}</td>
+          <td style="text-align:right; font-family:'IBM Plex Mono',monospace; font-size:11px;">${fmt(i.rate)}</td>
+          <td style="text-align:right; font-family:'IBM Plex Mono',monospace; font-size:11px;">${fmt(i.amount)}</td>
+        </tr>`).join('')}
+      </table>
+
+      <div class="boq-total">
+        <span>Provisional Total (excl. VAT):</span>
+        <strong>R ${fmt(boqTotal)}</strong>
+      </div>
+      <p class="prose" style="margin-top:0.8rem; font-size:11px;">${(d.boq || {}).notes || ''}</p>
+
+      <div class="doc-footer">
+        <span>${m.docRef}-BOQ · Rev 0 Provisional</span>
+        <span>Rates to be confirmed against Riken / supplier quotations</span>
+      </div>
+    `;
+
+    document.getElementById('tab-notes').innerHTML = `
+      <div class="doc-title" style="margin-bottom:0.4rem;">Basis of Design Notes</div>
+      <div class="doc-subtitle">${m.siteName} &nbsp;·&nbsp; Class ${m.lpsClass} LPS</div>
+
+      <div class="section-h">Applicable Standards</div>
+      ${(bod.applicable_standards || []).map(s => `<p class="prose" style="margin-bottom:2px;">• ${s}</p>`).join('')}
+
+      <div class="section-h">Design Parameters</div>
+      ${(bod.design_parameters || []).map(p => `<p class="prose" style="margin-bottom:2px;">• ${p}</p>`).join('')}
+
+      <div class="section-h">Air Termination Network</div>
+      <p class="prose">${bod.air_termination || m.spec.air_term}</p>
+
+      <div class="section-h">Down Conductors</div>
+      <p class="prose">${bod.down_conductors || 'TBC per site survey'}</p>
+
+      <div class="section-h">Earth Termination System</div>
+      <p class="prose">${bod.earth_termination || 'TBC per soil resistivity test'}</p>
+
+      <div class="section-h">Equipotential Bonding</div>
+      <p class="prose">${bod.equipotential_bonding || 'TBC'}</p>
+
+      <div class="section-h">SPD Protection</div>
+      <p class="prose">${bod.spd_protection || m.spec.spd}</p>
+
+      <div class="section-h">Separation Distance</div>
+      <p class="prose">${bod.separation_distance || 'To be calculated per IEC 62305-3 Clause 6.3'}</p>
+
+      <div class="section-h">Provisional Caveats</div>
+      ${(bod.provisional_caveats || ['Site survey required','Soil resistivity testing required','Final design subject to DEHN Risk Tool calculation','COC to be issued post-installation']).map(c => `<p class="prose" style="margin-bottom:2px;">• ${c}</p>`).join('')}
+    `;
+
+    const out = document.getElementById('outputArea');
+    out.style.display = 'block';
+    out.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // ─── PDF EXPORT ─────────────────────────────────────────────────────────────
+
+  function exportPDF() {
+    if (!reportData) return;
+    const btn = document.getElementById('exportBtn');
+    btn.disabled = true;
+    btn.textContent = 'Generating PDF...';
+
+    try {
+      const { jsPDF } = window.jspdf;
+      const d = reportData;
+      const m = d._meta;
+      const ld = d.lightning_data || {};
+      const ra = d.risk_assessment || {};
+      const bod = d.basis_of_design || {};
+      const boqItems = (d.boq && d.boq.items) ? d.boq.items : [];
+      const boqTotal = boqItems.reduce((s, i) => s + Number(i.amount || 0), 0);
+      const today = new Date().toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' });
+
+      const NAVY  = [26, 58, 92];
+      const GOLD  = [200, 168, 75];
+      const GOLDL = [245, 233, 200];
+      const WHITE = [255, 255, 255];
+      const LGREY = [240, 237, 230];
+      const MGREY = [120, 120, 116];
+      const BLACK = [26, 26, 24];
+
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const PW = 210, PH = 297, ML = 18, MR = 18, CW = PW - ML - MR;
+      let pageNum = 1;
+
+      function hdr(pn) {
+        doc.setFillColor(...NAVY); doc.rect(0,0,PW,22,'F');
+        doc.setFillColor(...GOLD); doc.rect(0,22,PW,1.2,'F');
+        doc.setTextColor(...GOLD); doc.setFontSize(14); doc.setFont('helvetica','bold');
+        doc.text('ESTAC', ML, 14);
+        doc.setFontSize(7); doc.setFont('helvetica','normal');
+        doc.setTextColor(200,168,75); doc.text('ENGINEERING', ML, 19);
+        doc.setTextColor(180,172,150); doc.setFontSize(7);
+        doc.text(m.docRef + '  |  Rev 0 Provisional  |  Pg '+pn, PW-MR, 14, {align:'right'});
+        doc.text(today, PW-MR, 19, {align:'right'});
+      }
+
+      function ftr() {
+        doc.setFillColor(...NAVY); doc.rect(0,PH-12,PW,12,'F');
+        doc.setFillColor(...GOLD); doc.rect(0,PH-13,PW,1,'F');
+        doc.setTextColor(...GOLD); doc.setFontSize(7); doc.setFont('helvetica','normal');
+        doc.text('PRELIMINARY — FOR REVIEW ONLY — SUBJECT TO SITE SURVEY AND FULL DEHN RISK TOOL ANALYSIS', PW/2, PH-5.5, {align:'center'});
+      }
+
+      function secH(y, txt) {
+        doc.setFillColor(...NAVY); doc.rect(ML,y,CW,6.5,'F');
+        doc.setFillColor(...GOLD); doc.rect(ML,y+6.5,CW,0.6,'F');
+        doc.setTextColor(...WHITE); doc.setFontSize(8); doc.setFont('helvetica','bold');
+        doc.text(txt.toUpperCase(), ML+3, y+4.6);
+        return y+9;
+      }
+
+      function wrap(txt, x, y, mw, lh, col) {
+        doc.setTextColor(...(col||BLACK));
+        const lines = doc.splitTextToSize(String(txt||''), mw);
+        doc.text(lines, x, y);
+        return y + lines.length * lh;
+      }
+
+      function chk(y, need) {
+        if (y+need > PH-20) { doc.addPage(); pageNum++; hdr(pageNum); ftr(); return 32; }
+        return y;
+      }
+
+      function grid(items, y) {
+        const cw = CW/2-2, ch = 12;
+        for (let i=0; i<items.length; i+=2) {
+          items.slice(i,i+2).forEach((it,col) => {
+            const x = ML+col*(cw+4);
+            doc.setFillColor(...LGREY); doc.roundedRect(x,y,cw,ch,1.5,1.5,'F');
+            doc.setTextColor(...MGREY); doc.setFontSize(6.5); doc.setFont('helvetica','normal');
+            doc.text((it.label||'').toUpperCase(), x+3, y+4);
+            doc.setTextColor(...NAVY); doc.setFontSize(9); doc.setFont('helvetica','bold');
+            doc.text(String(it.value||'TBC'), x+3, y+9.5);
+          });
+          y+=ch+3;
+        }
+        return y;
+      }
+
+      // PAGE 1 — COVER
+      hdr(1); ftr();
+      let y = 32;
+      doc.setFillColor(...GOLDL); doc.setDrawColor(...GOLD); doc.setLineWidth(0.5);
+      doc.roundedRect(ML,y,CW,8,1.5,1.5,'FD');
+      doc.setTextColor(122,92,16); doc.setFontSize(7.5); doc.setFont('helvetica','bold');
+      doc.text('PRELIMINARY — FOR REVIEW ONLY — NOT FOR CONSTRUCTION', PW/2, y+5.2, {align:'center'});
+      y+=13;
+      doc.setTextColor(...NAVY); doc.setFontSize(18); doc.setFont('helvetica','bold');
+      doc.text('Provisional Lightning Protection', ML, y+8);
+      doc.text('Risk Assessment', ML, y+17);
+      y+=24;
+      doc.setFillColor(...GOLD); doc.rect(ML,y,40,1,'F');
+      y+=5;
+      doc.setTextColor(...MGREY); doc.setFontSize(10); doc.setFont('helvetica','normal');
+      doc.text(m.siteName, ML, y); y+=5;
+      doc.setFontSize(8.5);
+      doc.text(m.siteLocation+(m.gpsCoords?'  |  GPS: '+m.gpsCoords:''), ML, y); y+=12;
+      y = grid([
+        {label:'Document Reference', value:m.docRef},
+        {label:'Revision', value:'Rev 0 — Provisional'},
+        {label:'Date of Issue', value:today},
+        {label:'LPS Class Sought', value:'Class '+m.lpsClass+' (LPL '+m.lpsClass+')'},
+        {label:'Mesh / Spacing', value:m.spec.mesh},
+        {label:'Protection Efficiency', value:m.spec.eff},
+        {label:'Structure Type', value:(m.structureType||'').replace(/_/g,' ')},
+        {label:'Standard', value:'SANS 62305 / IEC 62305'},
+      ], y);
+      y+=4;
+      doc.setFillColor(...NAVY); doc.roundedRect(ML,y,CW,22,2,2,'F');
+      doc.setTextColor(...GOLD); doc.setFontSize(7); doc.setFont('helvetica','bold');
+      doc.text('PREPARED BY', ML+4, y+5);
+      doc.setTextColor(220,215,200); doc.setFontSize(9); doc.setFont('helvetica','bold');
+      doc.text('Estac Engineering (Pty) Ltd', ML+4, y+11);
+      doc.setFontSize(7.5); doc.setFont('helvetica','normal'); doc.setTextColor(180,172,150);
+      doc.text('AI-assisted provisional assessment — requires review by a registered professional engineer', ML+4, y+16.5);
+      doc.text('before issue for design or construction purposes.', ML+4, y+20.5);
+
+      // PAGE 2 — RISK ASSESSMENT
+      doc.addPage(); pageNum++;
+      hdr(pageNum); ftr(); y=32;
+
+      y = secH(y,'1. Lightning Data & Site Parameters'); y+=3;
+      y = grid([
+        {label:'Ground Flash Density (Ng)', value:(ld.Ng||'TBC')+' fl/km2/yr'},
+        {label:'Thunderstorm Days (Td)', value:(ld.Td||'TBC')+' days/yr'},
+        {label:'Location Factor (Cdb)', value:ld.Cdb||'TBC'},
+        {label:'Data Source', value:ld.source||'SAWS / Regional Climatology'},
+      ], y); y+=2;
+      if (ld.regional_note) { doc.setFontSize(8); doc.setFont('helvetica','italic'); y=wrap(ld.regional_note,ML,y,CW,4.5,MGREY); y+=4; }
+
+      y=chk(y,20); y=secH(y,'2. Structure Description'); y+=4;
+      doc.setFontSize(8.5); doc.setFont('helvetica','normal');
+      y=wrap(ra.structure_description||(m.structureType+' at '+m.siteLocation),ML,y,CW,4.8,BLACK); y+=6;
+
+      y=chk(y,30); y=secH(y,'3. Risk Analysis — IEC 62305-2'); y+=3;
+      doc.autoTable({
+        startY:y, head:[['Component','Description','Est. Value','Tolerable','Verdict']],
+        body:(ra.risk_components||[]).map(r=>[r.component,r.description,r.value,r.tolerable,r.verdict||'']),
+        margin:{left:ML,right:MR},
+        styles:{fontSize:8,cellPadding:3,textColor:BLACK,lineColor:[220,217,210],lineWidth:0.3},
+        headStyles:{fillColor:NAVY,textColor:GOLD,fontStyle:'bold',fontSize:7.5},
+        alternateRowStyles:{fillColor:LGREY},
+        columnStyles:{0:{fontStyle:'bold',cellWidth:22,textColor:NAVY},2:{cellWidth:36,fontSize:7.5},3:{cellWidth:28,fontSize:7.5},4:{cellWidth:28}},
+        didDrawCell:function(data){
+          if(data.section==='body'&&data.column.index===4&&data.cell.raw){
+            const v=data.cell.raw.toUpperCase();
+            const fc=v.includes('EXCEED')?[252,235,235]:v.includes('MARGIN')?[250,238,218]:[234,243,222];
+            const tc=v.includes('EXCEED')?[163,45,45]:v.includes('MARGIN')?[133,79,11]:[59,109,17];
+            doc.setFillColor(...fc); doc.rect(data.cell.x,data.cell.y,data.cell.width,data.cell.height,'F');
+            doc.setTextColor(...tc); doc.setFontSize(7); doc.setFont('helvetica','bold');
+            doc.text(data.cell.raw,data.cell.x+2,data.cell.y+data.cell.height/2+1);
+          }
+        }
+      });
+      y=doc.lastAutoTable.finalY+6;
+      const rl=ra.overall_risk_level||'TBC';
+      const rC={HIGH:[252,235,235],MEDIUM:[250,238,218],LOW:[234,243,222]};
+      const rT={HIGH:[163,45,45],MEDIUM:[133,79,11],LOW:[59,109,17]};
+      doc.setFillColor(...LGREY); doc.roundedRect(ML,y,CW,10,1.5,1.5,'F');
+      doc.setFillColor(...(rC[rl]||[230,241,251])); doc.roundedRect(ML+3,y+2,40,6,1,1,'F');
+      doc.setTextColor(...(rT[rl]||[24,95,165])); doc.setFontSize(7.5); doc.setFont('helvetica','bold');
+      doc.text('OVERALL RISK: '+rl, ML+5, y+6.2);
+      doc.setTextColor(...NAVY); doc.setFontSize(8); doc.setFont('helvetica','bold');
+      doc.text('Recommended LPS: '+(ra.lps_class_justified||'Class '+m.lpsClass), ML+50, y+6.2);
+      y+=15;
+
+      y=chk(y,20); y=secH(y,'4. Justification'); y+=4;
+      doc.setFontSize(8.5); doc.setFont('helvetica','normal');
+      y=wrap(ra.justification||'',ML,y,CW,4.8,BLACK); y+=6;
+
+      y=chk(y,20); y=secH(y,'5. Risk Reduction Measures'); y+=4;
+      (ra.risk_reduction_measures||[]).forEach(meas=>{
+        const lines=doc.splitTextToSize('•  '+meas,CW-4);
+        y=chk(y,lines.length*4.8+2);
+        doc.setFontSize(8.5); doc.setFont('helvetica','normal'); doc.setTextColor(...BLACK);
+        doc.text(lines,ML+2,y); y+=lines.length*4.8+1.5;
+      });
+
+      // PAGE 3 — BASIS OF DESIGN
+      doc.addPage(); pageNum++;
+      hdr(pageNum); ftr(); y=32;
+      y=secH(y,'6. Basis of Design'); y+=4;
+      [
+        {title:'Applicable Standards', content:(bod.applicable_standards||[]).join('  |  ')},
+        {title:'Design Parameters', content:(bod.design_parameters||[]).join('\n')},
+        {title:'Air Termination Network', content:bod.air_termination||m.spec.air_term},
+        {title:'Down Conductors', content:bod.down_conductors||'TBC per site survey'},
+        {title:'Earth Termination System', content:bod.earth_termination||'TBC per soil resistivity test'},
+        {title:'Equipotential Bonding', content:bod.equipotential_bonding||'TBC'},
+        {title:'SPD Protection', content:bod.spd_protection||m.spec.spd},
+        {title:'Separation Distance', content:bod.separation_distance||'To be calculated per IEC 62305-3 Clause 6.3'},
+      ].forEach(sec=>{
+        y=chk(y,20);
+        doc.setFillColor(...GOLD); doc.rect(ML,y,2.5,5.5,'F');
+        doc.setTextColor(...NAVY); doc.setFontSize(8); doc.setFont('helvetica','bold');
+        doc.text(sec.title, ML+5, y+4); y+=7;
+        const lines=doc.splitTextToSize(sec.content,CW-4);
+        y=chk(y,lines.length*4.5+2);
+        doc.setFontSize(8.2); doc.setFont('helvetica','normal'); doc.setTextColor(...BLACK);
+        doc.text(lines,ML+4,y); y+=lines.length*4.5+5;
+      });
+      y=chk(y,50);
+      doc.setFillColor(...GOLDL); doc.setDrawColor(...GOLD); doc.setLineWidth(0.5);
+      doc.roundedRect(ML,y,CW,6,1,1,'F');
+      doc.setTextColor(122,92,16); doc.setFontSize(7.5); doc.setFont('helvetica','bold');
+      doc.text('PROVISIONAL CAVEATS', ML+3, y+4); y+=9;
+      (bod.provisional_caveats||[
+        'Site survey required to confirm all dimensions and structural details',
+        'Soil resistivity testing required to finalise earthing design and rod spacing',
+        'Final design subject to as-built survey and full DEHN Risk Tool v3.260 calculation',
+        'Certificate of Compliance (COC) to be issued post-installation and testing only'
+      ]).forEach(cav=>{
+        const lines=doc.splitTextToSize('•  '+cav,CW-4);
+        y=chk(y,lines.length*4.5+2);
+        doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(...BLACK);
+        doc.text(lines,ML+2,y); y+=lines.length*4.5+2;
+      });
+
+      // ANNEX A — BOQ
+      doc.addPage(); pageNum++;
+      hdr(pageNum); ftr(); y=32;
+      doc.setFillColor(...GOLD); doc.rect(ML,y,CW,8,'F');
+      doc.setTextColor(...NAVY); doc.setFontSize(9); doc.setFont('helvetica','bold');
+      doc.text('ANNEX A  —  PROVISIONAL BILL OF QUANTITIES', ML+4, y+5.5); y+=13;
+      doc.setTextColor(...NAVY); doc.setFontSize(10); doc.setFont('helvetica','bold');
+      doc.text('LPS Class '+m.lpsClass+' — '+m.siteName, ML, y); y+=5;
+      doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(...MGREY);
+      doc.text(m.siteLocation+'  |  '+m.docRef+'-BOQ  |  Rev 0  |  '+today, ML, y); y+=4;
+      doc.setFillColor(...GOLDL); doc.setDrawColor(...GOLD); doc.setLineWidth(0.4);
+      doc.roundedRect(ML,y,CW,7,1,1,'FD');
+      doc.setTextColor(122,92,16); doc.setFontSize(7); doc.setFont('helvetica','bold');
+      doc.text('PROVISIONAL RATES — Subject to site survey, final design and supplier quotation.', ML+3, y+4.5); y+=11;
+
+      doc.autoTable({
+        startY:y,
+        head:[['Item','Description','Unit','Qty','Rate (ZAR)','Amount (ZAR)']],
+        body:boqItems.map(i=>[i.item,i.description,i.unit,String(i.qty),fmt(i.rate),fmt(i.amount)]),
+        margin:{left:ML,right:MR},
+        styles:{fontSize:8,cellPadding:2.5,textColor:BLACK,lineColor:[220,217,210],lineWidth:0.3,overflow:'linebreak'},
+        headStyles:{fillColor:NAVY,textColor:GOLD,fontStyle:'bold',fontSize:7.5},
+        alternateRowStyles:{fillColor:LGREY},
+        columnStyles:{0:{cellWidth:12,fontStyle:'bold',textColor:NAVY},1:{cellWidth:'auto'},2:{cellWidth:14,halign:'center'},3:{cellWidth:12,halign:'right'},4:{cellWidth:28,halign:'right'},5:{cellWidth:30,halign:'right',fontStyle:'bold'}},
+        didAddPage:function(){ pageNum++; hdr(pageNum); ftr(); }
+      });
+      y=doc.lastAutoTable.finalY+4;
+
+      y=chk(y,16);
+      doc.setFillColor(...NAVY); doc.rect(ML,y,CW,10,'F');
+      doc.setFillColor(...GOLD); doc.rect(ML,y,CW,0.8,'F');
+      doc.setTextColor(...GOLD); doc.setFontSize(8.5); doc.setFont('helvetica','bold');
+      doc.text('PROVISIONAL TOTAL (EXCL. VAT)', ML+4, y+6.5);
+      doc.setFontSize(11);
+      doc.text('R '+fmt(boqTotal), PW-MR, y+6.8, {align:'right'}); y+=14;
+      doc.setFontSize(7.5); doc.setFont('helvetica','italic'); doc.setTextColor(...MGREY);
+      doc.text('VAT @ 15%: R '+fmt(boqTotal*0.15)+'  |  Total incl. VAT: R '+fmt(boqTotal*1.15), ML, y); y+=8;
+      if ((d.boq||{}).notes) { y=chk(y,12); doc.setFontSize(8); doc.setFont('helvetica','normal'); y=wrap((d.boq).notes,ML,y,CW,4.5,MGREY); y+=4; }
+
+      y=chk(y,40); y+=6;
+      doc.setFillColor(...LGREY); doc.roundedRect(ML,y,CW,32,2,2,'F');
+      doc.setTextColor(...NAVY); doc.setFontSize(8); doc.setFont('helvetica','bold');
+      doc.text('DOCUMENT APPROVAL', ML+4, y+6);
+      const c3=CW/3;
+      ['Prepared by','Reviewed by','Approved by'].forEach((lbl,i)=>{
+        const x=ML+4+i*c3;
+        doc.setFontSize(7); doc.setFont('helvetica','normal'); doc.setTextColor(...MGREY);
+        doc.text(lbl, x, y+12);
+        doc.setDrawColor(...MGREY); doc.setLineWidth(0.3);
+        doc.line(x, y+26, x+c3-6, y+26);
+        doc.text('Name / Date / Signature', x, y+30);
+      });
+
+      doc.save(m.docRef+'_Provisional_LPS_Risk_Assessment.pdf');
+
+    } catch(err) {
+      alert('PDF export failed: '+err.message);
+    } finally {
+      const btn=document.getElementById('exportBtn');
+      btn.disabled=false;
+      btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Export PDF Report';
+    }
+  }
+</script>
+
+</body>
+</html>
