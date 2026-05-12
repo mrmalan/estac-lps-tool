@@ -7,7 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-<script src="https://unpkg.com/docx@8.5.0/build/index.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -1394,7 +1394,7 @@ Ensure qty × rate = amount for every item.`;
 
     try {
       const { Document, Paragraph, Table, TableRow, TableCell, TextRun, HeadingLevel,
-              AlignmentType, WidthType, BorderStyle, ShadingType, Packer } = docx;
+              AlignmentType, WidthType, BorderStyle, ShadingType, Packer } = window.docx;
 
       const d = reportData;
       const m = d._meta;
