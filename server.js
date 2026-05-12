@@ -15,11 +15,10 @@ app.post('/api/generate', async (req, res) => {
   if (!apiKey) return res.status(500).json({ error: 'API key not configured.' });
   try {
     const body = {
-     model: 'claude-3-5-sonnet-20241022',
-      max_tokens: 8000,
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 6000,
       messages: req.body.messages
     };
-    console.log('Calling Anthropic with model:', body.model);
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -30,14 +29,9 @@ app.post('/api/generate', async (req, res) => {
       body: JSON.stringify(body)
     });
     const data = await response.json();
-    console.log('Anthropic response status:', response.status);
-    if (!response.ok) {
-      console.log('Anthropic error:', JSON.stringify(data));
-      return res.status(response.status).json(data);
-    }
+    if (!response.ok) return res.status(response.status).json(data);
     res.json(data);
   } catch (err) {
-    console.log('Fetch error:', err.message);
     res.status(500).json({ error: 'Proxy failed: ' + err.message });
   }
 });
