@@ -15,7 +15,7 @@ app.post('/api/generate', async (req, res) => {
   if (!apiKey) return res.status(500).json({ error: 'API key not configured.' });
   try {
     const body = {
-     model: 'claude-haiku-4-5-20251001',
+     model: 'claude-3-5-sonnet-20241022',
       max_tokens: 8000,
       messages: req.body.messages
     };
