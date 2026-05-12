@@ -1,21 +1,18 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: '2mb' }));
 
-// Serve index.html at the root URL
 app.get('/', (req, res) => {
-  res.sendFile(require('path').resolve(__dirname, 'index.html'));
+  res.sendFile(path.resolve(__dirname, 'index.html'));
 });
 
-// Proxy route to Anthropic API
 app.post('/api/generate', async (req, res) => {
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    return res.status(500).json({ error: 'API key not configured on server.' });
-  }
+  if (!apiKey) return res.status(500).json({ error: 'API key not configured.' });
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -31,9 +28,9 @@ app.post('/api/generate', async (req, res) => {
     if (!response.ok) return res.status(response.status).json(data);
     res.json(data);
   } catch (err) {
-    res.status(500).json({ error: 'Proxy request failed: ' + err.message });
+    res.status(500).json({ error: 'Proxy failed: ' + err.message });
   }
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Estac LPS Tool running on port ${PORT}`));
+app.listen(PORT, () => console.log('Estac LPS Tool running on port ' + PORT));
