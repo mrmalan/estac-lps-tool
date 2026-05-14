@@ -1774,6 +1774,7 @@ Ensure qty × rate = amount for every item.`;
 banner.innerHTML = '&#9889; Pre-populated from client intake form &mdash; review all fields before generating. <a href="/" style="color:#c8a84b;margin-left:12px;font-size:11px;">Clear &amp; start fresh</a>';
 })();
 (function() {
+ (function() {
   function fillFromParams() {
     const params = new URLSearchParams(window.location.search);
     if (!params.toString()) return;
@@ -1798,13 +1799,11 @@ banner.innerHTML = '&#9889; Pre-populated from client intake form &mdash; review
     set('existingLPS',     params.get('existingLPS'));
     set('additionalNotes', params.get('additionalNotes'));
 
-    // Confirm fields were filled
     const siteName = params.get('siteName');
     const filled = siteName
       ? document.getElementById('siteName')?.value === siteName
       : false;
 
-    // Show banner
     const existing = document.getElementById('intake-banner');
     if (existing) return;
     const banner = document.createElement('div');
@@ -1816,7 +1815,6 @@ banner.innerHTML = '&#9889; Pre-populated from client intake form &mdash; review
     document.body.insertBefore(banner, document.body.firstChild);
   }
 
-  // Try immediately, then again after short delays to handle slow initialisations
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function() {
       fillFromParams();
@@ -1829,7 +1827,6 @@ banner.innerHTML = '&#9889; Pre-populated from client intake form &mdash; review
     setTimeout(fillFromParams, 800);
   }
 })();
-
 </script>
 
 </body>
