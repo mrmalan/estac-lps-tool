@@ -1774,26 +1774,74 @@ Ensure qty × rate = amount for every item.`;
       : false;
 
     const existing = document.getElementById('intake-banner');
-    if (existing) return;
-    const banner = document.createElement('div');
-    banner.id = 'intake-banner';
-    banner.style.cssText = 'background:#1a3a5c;color:#f5e9c8;padding:10px 16px;font-size:12px;text-align:center;letter-spacing:0.04em;border-bottom:2px solid #c8a84b;position:relative;z-index:9999;';
-    banner.innerHTML = filled
-      ? '&#9889; Pre-populated from client intake form &mdash; review all fields before generating. <a href="/" style="color:#c8a84b;margin-left:12px;font-size:11px;">Clear &amp; start fresh</a>'
-      : '&#9889; Intake data received &mdash; fields are being filled. If any appear blank, scroll down to check. <a href="/" style="color:#c8a84b;margin-left:12px;font-size:11px;">Clear &amp; start fresh</a>';
-    document.body.insertBefore(banner, document.body.firstChild);
+   (function() {
+  var MAX_ATTEMPTS = 20;
+  var INTERVAL_MS  = 500;
+  var attempts     = 0;
+
+  function tryFill() {
+    var params = new URLSearchParams(window.location.search);
+    if (!params.toString()) return;
+
+    attempts++;
+
+    var set = function(id, val) {
+      if (!val) return false;
+      var el = document.getElementById(id);
+      if (!el) return false;
+      el.value = val;
+      el.dispatchEvent(new Event('change'));
+      el.dispatchEvent(new Event('input'));
+      return el.value === val;
+    };
+
+    var siteName = params.get('siteName');
+    var results = [
+      set('siteName',        siteName),
+      set('siteLocation',    params.get('siteLocation')),
+      set('gpsCoords',       params.get('gpsCoords')),
+      set('structureType',   params.get('structureType')),
+      set('roofType',        params.get('roofType')),
+      set('footprint',       params.get('footprint')),
+      set('buildingHeight',  params.get('buildingHeight')),
+      set('occupancy',       params.get('occupancy')),
+      set('existingLPS',     params.get('existingLPS')),
+      set('additionalNotes', params.get('additionalNotes'))
+    ];
+
+    // Check if the key field (siteName) was successfully set
+    var siteNameEl = document.getElementById('siteName');
+    var filled = siteNameEl && siteName && siteNameEl.value === siteName;
+
+    // Show or update banner
+    var banner = document.getElementById('intake-banner');
+    if (!banner) {
+      banner = document.createElement('div');
+      banner.id = 'intake-banner';
+      banner.style.cssText = 'background:#1a3a5c;color:#f5e9c8;padding:10px 16px;font-size:12px;text-align:center;letter-spacing:0.04em;border-bottom:2px solid #c8a84b;position:relative;z-index:9999;';
+      document.body.insertBefore(banner, document.body.firstChild);
+    }
+
+    if (filled) {
+      banner.innerHTML = '&#9889; Pre-populated from client intake form &mdash; review all fields before generating. <a href="/" style="color:#c8a84b;margin-left:12px;font-size:11px;">Clear &amp; start fresh</a>';
+      return; // Success — stop retrying
+    }
+
+    banner.innerHTML = '&#9889; Loading intake data &mdash; please wait&hellip; <span style="color:rgba(245,233,200,0.5);font-size:11px;">(' + attempts + '/' + MAX_ATTEMPTS + ')</span>';
+
+    if (attempts < MAX_ATTEMPTS) {
+      setTimeout(tryFill, INTERVAL_MS);
+    } else {
+      // Final attempt failed — show warning
+      banner.innerHTML = '&#9889; Intake data received &mdash; some fields may need manual review. <a href="/" style="color:#c8a84b;margin-left:12px;font-size:11px;">Clear &amp; start fresh</a>';
+    }
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function() {
-      fillFromParams();
-      setTimeout(fillFromParams, 300);
-      setTimeout(fillFromParams, 800);
-    });
+  // Start after page is fully loaded
+  if (document.readyState === 'complete') {
+    tryFill();
   } else {
-    fillFromParams();
-    setTimeout(fillFromParams, 300);
-    setTimeout(fillFromParams, 800);
+    window.addEventListener('load', tryFill);
   }
 })();
 
