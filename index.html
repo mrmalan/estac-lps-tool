@@ -193,6 +193,7 @@
       <div class="form-group">
         <label>GPS Coordinates (optional)</label>
         <input type="text" id="gpsCoords" placeholder="e.g. -27.85, 26.36" />
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">To get coordinates from Google Maps: right-click your site on the map and click the coordinates that appear at the top of the menu.</div>
       </div>
       <div class="form-group">
         <label>Google Maps Link (optional)</label>
@@ -452,10 +453,12 @@
       <button class="tab-btn active" onclick="switchTab('risk', this)">Risk Assessment</button>
       <button class="tab-btn" onclick="switchTab('boq', this)">Provisional BOQ</button>
       <button class="tab-btn" onclick="switchTab('notes', this)">Basis of Design</button>
+      <button class="tab-btn" onclick="switchTab('cta', this)" style="color:#3b6d11;font-weight:600;">&#10003; Next Steps</button>
     </div>
     <div class="tab-content active" id="tab-risk"></div>
     <div class="tab-content" id="tab-boq"></div>
     <div class="tab-content" id="tab-notes"></div>
+    <div class="tab-content" id="tab-cta"></div>
     <div class="export-bar">
       <button class="export-btn" id="exportBtn" onclick="exportPDF()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -706,6 +709,42 @@ Ensure qty × rate = amount for every item.`;
     const boqTotal = boqItems.reduce((s, i) => s + Number(i.amount || 0), 0);
     const overallCls = ra.overall_risk_level === 'HIGH' ? 'badge-high' : ra.overall_risk_level === 'MEDIUM' ? 'badge-med' : ra.overall_risk_level === 'LOW' ? 'badge-low' : 'badge-prov';
 
+    // Site summary block
+    const siteSummaryItems = [
+      m.siteUse ? `<span><strong>Site use:</strong> ${m.siteUse}</span>` : '',
+      m.buildingUse ? `<span><strong>Building use:</strong> ${m.buildingUse}</span>` : '',
+      m.roofType ? `<span><strong>Roof:</strong> ${m.roofType}</span>` : '',
+      m.structMat ? `<span><strong>Structure:</strong> ${m.structMat}</span>` : '',
+      m.buildingHeight ? `<span><strong>Height:</strong> ${m.buildingHeight}</span>` : '',
+      m.footprint ? `<span><strong>Footprint:</strong> ${m.footprint} m²</span>` : '',
+      m.occupancy ? `<span><strong>Occupants:</strong> ${m.occupancy}</span>` : '',
+      m.siteContents ? `<span><strong>Contents:</strong> ${m.siteContents}</span>` : '',
+      m.existingLPS ? `<span><strong>Existing LPS:</strong> ${m.existingLPS}</span>` : '',
+    ].filter(Boolean).join('');
+
+    // Clean BOQ notes — only show if meaningful (>20 chars, not generic filler)
+    const boqNotesRaw = (d.boq || {}).notes || '';
+    const boqNotes = boqNotesRaw.length > 20 &&
+      !boqNotesRaw.toLowerCase().includes('rates are provisional') &&
+      !boqNotesRaw.toLowerCase().includes('subject to change') &&
+      !boqNotesRaw.toLowerCase().includes('indicative only')
+      ? boqNotesRaw : '';
+
+    // Basis of Design — filter out vague/short content
+    const isValid = s => s && String(s).trim().length > 15 &&
+      !String(s).toLowerCase().includes('tbc') &&
+      !String(s).toLowerCase().includes('to be confirmed') &&
+      !String(s).toLowerCase().includes('not applicable');
+
+    const bodSections = [
+      { title: 'Air Termination Network', content: isValid(bod.air_termination) ? bod.air_termination : m.spec.air_term },
+      { title: 'Down Conductors', content: isValid(bod.down_conductors) ? bod.down_conductors : `Minimum 2 down conductors for Class ${m.lpsClass}, spaced per IEC 62305-3 Table 4. Routing to be confirmed on site survey.` },
+      { title: 'Earth Termination System', content: isValid(bod.earth_termination) ? bod.earth_termination : `Type A or B earthing arrangement with minimum ${m.spec.rods} earth rods. Final electrode dimensions subject to soil resistivity testing (Wenner 4-point method).` },
+      { title: 'Equipotential Bonding', content: isValid(bod.equipotential_bonding) ? bod.equipotential_bonding : 'All conductive services entering the structure to be bonded to the LPS at the point of entry per IEC 62305-3 Clause 6.2.' },
+      { title: 'SPD Protection', content: m.spec.spd },
+      { title: 'Separation Distance', content: isValid(bod.separation_distance) ? bod.separation_distance : 'Physical separation distance to be calculated per IEC 62305-3 Clause 6.3 following site survey and confirmed down conductor routing.' },
+    ];
+
     document.getElementById('tab-risk').innerHTML = `
       <div class="doc-header">
         <div><div class="doc-logo">ESTAC</div><div class="doc-sub">Engineering</div></div>
@@ -714,7 +753,14 @@ Ensure qty × rate = amount for every item.`;
       <div class="doc-title">Provisional Lightning Protection Risk Assessment</div>
       <div class="doc-subtitle">${m.siteName} &nbsp;·&nbsp; ${m.siteLocation}</div>
       <div class="preliminary-banner">&#9888; Preliminary — For Review Only · Subject to Site Survey &amp; Full DEHN Risk Tool Analysis</div>
-      <div class="section-h">Site &amp; Lightning Parameters</div>
+
+      <div class="section-h">Site Summary</div>
+      <div style="background:var(--surface2);border-radius:var(--radius);padding:12px 14px;margin-bottom:0.75rem;display:flex;flex-wrap:wrap;gap:10px 24px;font-size:12px;color:var(--text-secondary);line-height:1.8;">
+        ${siteSummaryItems || '<span style="color:var(--text-muted)">No additional site details provided.</span>'}
+      </div>
+      ${ra.structure_description ? `<p class="prose" style="margin-bottom:0.75rem;">${ra.structure_description}</p>` : ''}
+
+      <div class="section-h">Lightning Parameters</div>
       <div class="info-grid">
         <div class="info-cell"><div class="ic-label">Ground Flash Density (Ng)</div><div class="ic-val">${ld.Ng || 'TBC'} flashes/km²/yr</div></div>
         <div class="info-cell"><div class="ic-label">Thunderstorm Days (Td)</div><div class="ic-val">${ld.Td || 'TBC'} days/yr</div></div>
@@ -725,8 +771,9 @@ Ensure qty × rate = amount for every item.`;
         <div class="info-cell"><div class="ic-label">Prior Inspection</div><div class="ic-val">${m.priorInsp || '—'}</div></div>
         <div class="info-cell"><div class="ic-label">CoC Status</div><div class="ic-val">${m.cocStatus || '—'}</div></div>
       </div>
-      <p class="prose">${ld.regional_note || ''}</p>
+      ${ld.regional_note ? `<p class="prose">${ld.regional_note}</p>` : ''}
       <p class="prose" style="font-size:10px;color:var(--text-muted);">Data source: ${ld.source || 'Regional climatology / SAWS estimate'}</p>
+
       <div class="section-h">Risk Analysis — IEC 62305-2</div>
       <table class="risk-table">
         <colgroup><col style="width:70px"/><col/><col style="width:110px"/><col style="width:90px"/><col style="width:110px"/></colgroup>
@@ -751,7 +798,7 @@ Ensure qty × rate = amount for every item.`;
       ${(ra.risk_reduction_measures || []).map(x => `<p class="prose" style="margin-bottom:2px;">• ${x}</p>`).join('')}
       <div class="doc-footer">
         <span>${m.docRef} · Rev 0 Preliminary</span>
-        <span>Estac Engineering · Requires registered engineer review prior to issue</span>
+        <span>Estac Engineering (Pty) Ltd</span>
       </div>`;
 
     document.getElementById('tab-boq').innerHTML = `
@@ -775,33 +822,214 @@ Ensure qty × rate = amount for every item.`;
         </tr>`).join('')}
       </table>
       <div class="boq-total"><span>Provisional Total (excl. VAT):</span><strong>R ${fmt(boqTotal)}</strong></div>
-      <p class="prose" style="margin-top:0.8rem;font-size:11px;">${(d.boq || {}).notes || ''}</p>
+      ${boqNotes ? `<p class="prose" style="margin-top:0.8rem;font-size:11px;">${boqNotes}</p>` : ''}
       <div class="doc-footer">
         <span>${m.docRef}-BOQ · Rev 0 Provisional</span>
-        <span>Rates to be confirmed against Riken / supplier quotations</span>
+        <span>Rates to be confirmed against Riken / supplier quotations following site survey</span>
       </div>`;
 
     document.getElementById('tab-notes').innerHTML = `
-      <div class="doc-title" style="margin-bottom:0.4rem;">Basis of Design Notes</div>
+      <div class="doc-header">
+        <div><div class="doc-logo">ESTAC</div><div class="doc-sub">Engineering</div></div>
+        <div class="doc-ref">${m.docRef}-BOD<br>Rev 0 — Provisional<br>${today}</div>
+      </div>
+      <div class="doc-title">Basis of Design</div>
       <div class="doc-subtitle">${m.siteName} &nbsp;·&nbsp; Class ${m.lpsClass} LPS</div>
+      <div class="preliminary-banner">&#9888; Provisional — Subject to Site Survey, Soil Resistivity Testing &amp; Final DEHN Risk Tool Calculation</div>
+
       <div class="section-h">Applicable Standards</div>
-      ${(bod.applicable_standards || []).map(s => `<p class="prose" style="margin-bottom:2px;">• ${s}</p>`).join('')}
+      <div style="background:var(--surface2);border-radius:var(--radius);padding:10px 14px;margin-bottom:0.75rem;display:flex;flex-wrap:wrap;gap:8px;">
+        ${(bod.applicable_standards || ['SANS 62305-1','SANS 62305-2','SANS 62305-3','SANS 62305-4','SANS 10142-1']).map(s =>
+          `<span style="background:var(--navy);color:var(--gold);font-size:10px;font-weight:500;padding:3px 10px;border-radius:3px;font-family:'IBM Plex Mono',monospace;">${s}</span>`
+        ).join('')}
+      </div>
+
+      ${(bod.design_parameters || []).length ? `
       <div class="section-h">Design Parameters</div>
-      ${(bod.design_parameters || []).map(p => `<p class="prose" style="margin-bottom:2px;">• ${p}</p>`).join('')}
-      <div class="section-h">Air Termination Network</div>
-      <p class="prose">${bod.air_termination || m.spec.air_term}</p>
-      <div class="section-h">Down Conductors</div>
-      <p class="prose">${bod.down_conductors || 'TBC per site survey'}</p>
-      <div class="section-h">Earth Termination System</div>
-      <p class="prose">${bod.earth_termination || 'TBC per soil resistivity test'}</p>
-      <div class="section-h">Equipotential Bonding</div>
-      <p class="prose">${bod.equipotential_bonding || 'TBC'}</p>
-      <div class="section-h">SPD Protection</div>
-      <p class="prose">${bod.spd_protection || m.spec.spd}</p>
-      <div class="section-h">Separation Distance</div>
-      <p class="prose">${bod.separation_distance || 'To be calculated per IEC 62305-3 Clause 6.3'}</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:0.75rem;">
+        ${bod.design_parameters.map(p => `
+          <div style="background:var(--surface2);border-radius:var(--radius);padding:8px 12px;font-size:12px;color:var(--text-secondary);border-left:3px solid var(--gold);">
+            ${p}
+          </div>`).join('')}
+      </div>` : ''}
+
+      ${bodSections.map(sec => `
+        <div style="margin-bottom:1rem;">
+          <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--navy);margin-bottom:5px;display:flex;align-items:center;gap:6px;">
+            <span style="display:inline-block;width:3px;height:12px;background:var(--gold);border-radius:1px;flex-shrink:0;"></span>
+            ${sec.title}
+          </div>
+          <p class="prose" style="padding-left:9px;">${sec.content}</p>
+        </div>`).join('')}
+
       <div class="section-h">Provisional Caveats</div>
-      ${(bod.provisional_caveats || []).map(c => `<p class="prose" style="margin-bottom:2px;">• ${c}</p>`).join('')}`;
+      <div style="background:var(--gold-light);border:0.5px solid var(--gold);border-radius:var(--radius);padding:12px 14px;">
+        ${(bod.provisional_caveats || [
+          'Site survey required to confirm all structural dimensions and conductor routing.',
+          'Soil resistivity testing (Wenner 4-point method) required to finalise earthing electrode design.',
+          'Final design subject to full DEHN Risk Tool v3.260 calculation and engineering sign-off.',
+          'Certificate of Compliance (COC) to be issued by a registered electrical contractor post-installation and testing only.'
+        ]).map(c => `<p class="prose" style="color:#7a5c10;margin-bottom:4px;">&#9888; ${c}</p>`).join('')}
+      </div>`;
+
+    // CTA — Next Steps tab
+    const phase1Fee = 5000;
+    const phase1FeeVAT = Math.round(phase1Fee * 1.15);
+    document.getElementById('tab-cta').innerHTML = `
+      <div class="doc-header">
+        <div><div class="doc-logo">ESTAC</div><div class="doc-sub">Engineering</div></div>
+        <div class="doc-ref">${m.docRef}<br>${today}</div>
+      </div>
+      <div class="doc-title">Next Steps — Proceeding with your LPS</div>
+      <div class="doc-subtitle">${m.siteName} &nbsp;·&nbsp; ${m.siteLocation}</div>
+
+      <div style="background:var(--green-bg);border:0.5px solid #3b6d11;border-radius:var(--radius);padding:12px 14px;margin-bottom:1.25rem;font-size:12px;color:var(--green-text);font-weight:500;">
+        &#10003; Based on this provisional assessment, your site has been identified as requiring a formal Lightning Protection System. The recommended LPS class is <strong>${ra.lps_class_justified || 'Class ' + m.lpsClass}</strong>.
+      </div>
+
+      <p class="prose" style="margin-bottom:1.25rem;">The provisional assessment you have just reviewed is based on information provided without a site visit. Before a certified, installed Lightning Protection System can be designed and priced with confidence, a <strong>formal site audit</strong> is required. This is the only commitment at this stage — the full engineering design and installation will be quoted separately following the audit.</p>
+
+      <div class="section-h">What the site audit includes</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:1.25rem;">
+        ${[
+          ['&#128269; Physical Site Inspection', 'On-site review of all structures, confirming dimensions, structural suitability, existing earthing, and conductor routing options.'],
+          ['&#127759; Soil Resistivity Assessment', 'Preliminary assessment of ground conditions to inform the earthing electrode design and flag any high-resistivity areas requiring further testing.'],
+          ['&#128203; Audit Report', 'Written summary of findings, confirming or revising the provisional LPS class recommendation, with a clear scope for the detailed design phase.'],
+          ['&#128196; Design &amp; Installation Proposal', 'Following the audit, Estac will issue a fixed-price quotation covering the full LPS design, material supply and installation — at no further obligation.']
+        ].map(([title, desc]) => `
+          <div style="background:var(--surface2);border-radius:var(--radius);padding:12px 14px;border-left:3px solid var(--gold);">
+            <div style="font-size:12px;font-weight:600;color:var(--navy);margin-bottom:4px;">${title}</div>
+            <p class="prose">${desc}</p>
+          </div>`).join('')}
+      </div>
+
+      <div class="section-h">Site Audit Fee</div>
+      <div style="background:var(--navy);border-radius:var(--radius);padding:1.25rem 1.5rem;margin-bottom:1.25rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+        <div>
+          <div style="font-size:11px;color:rgba(200,168,75,0.7);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Site Audit — Single Site Visit</div>
+          <div style="font-size:13px;color:#e8e4d8;line-height:1.6;">Physical site inspection, preliminary soil assessment<br>and written audit report.</div>
+          <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:6px;">Travel charged at cost (R8.50/km from Centurion). Accommodation at cost where overnight stay is required.</div>
+          <div style="font-size:10px;color:rgba(200,168,75,0.5);margin-top:4px;font-style:italic;">&#9432; Fee to be confirmed by Estac prior to acceptance. Rate may vary based on site location and number of structures.</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;">
+          <div style="font-size:11px;color:rgba(200,168,75,0.7);text-transform:uppercase;letter-spacing:0.06em;">From</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:500;color:var(--gold);">R ${fmt(phase1Fee)}</div>
+          <div style="font-size:10px;color:rgba(255,255,255,0.4);">excl. VAT &nbsp;·&nbsp; R ${fmt(phase1FeeVAT)} incl. VAT</div>
+        </div>
+      </div>
+
+      <div class="section-h">What you are agreeing to</div>
+      <div style="background:var(--surface2);border-radius:var(--radius);padding:1rem 1.25rem;margin-bottom:1.25rem;font-size:12px;color:var(--text-secondary);line-height:1.8;">
+        <p style="margin-bottom:6px;">By accepting, you are authorising Estac Engineering to carry out the site audit only. <strong style="color:var(--navy);">You are not committing to the full LPS design, material supply, installation, or any costs beyond the audit fee and travel.</strong></p>
+        <p>The full engineering proposal will be presented to you after the audit, and you retain full discretion to proceed or not at that stage.</p>
+      </div>
+
+      <div style="background:var(--gold-light);border:1px solid var(--gold);border-radius:var(--radius);padding:1.25rem 1.5rem;margin-bottom:1.25rem;">
+        <div style="font-size:12px;font-weight:600;color:var(--navy);margin-bottom:8px;">&#128221; Acceptance — Site Audit</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+          <div>
+            <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Client / Company</div>
+            <div style="border-bottom:1px solid #c8a84b;height:24px;"></div>
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Date</div>
+            <div style="border-bottom:1px solid #c8a84b;height:24px;"></div>
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Name</div>
+            <div style="border-bottom:1px solid #c8a84b;height:24px;"></div>
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Signature</div>
+            <div style="border-bottom:1px solid #c8a84b;height:24px;"></div>
+          </div>
+        </div>
+        <div style="font-size:10px;color:#7a5c10;line-height:1.6;">
+          I / We authorise Estac Engineering to proceed with a site audit for the above property. The audit fee and agreed travel costs are payable on completion of the audit. This acceptance does not commit me / us to any further works or expenditure beyond the audit.
+        </div>
+      </div>
+
+      <div class="doc-footer">
+        <span>${m.docRef} · Estac Engineering (Pty) Ltd</span>
+        <span>VAT 4400316735 · info@estac-engineering.com</span>
+      </div>`;
+    document.getElementById('tab-cta').innerHTML = `
+      <div class="doc-header">
+        <div><div class="doc-logo">ESTAC</div><div class="doc-sub">Engineering</div></div>
+        <div class="doc-ref">${m.docRef}<br>${today}</div>
+      </div>
+      <div class="doc-title">Next Steps — Proceeding with your LPS</div>
+      <div class="doc-subtitle">${m.siteName} &nbsp;·&nbsp; ${m.siteLocation}</div>
+
+      <div style="background:var(--green-bg);border:0.5px solid #3b6d11;border-radius:var(--radius);padding:12px 14px;margin-bottom:1.25rem;font-size:12px;color:var(--green-text);font-weight:500;">
+        &#10003; Based on this provisional assessment, your site has been identified as requiring a formal Lightning Protection System. The recommended LPS class is <strong>${ra.lps_class_justified || 'Class ' + m.lpsClass}</strong>.
+      </div>
+
+      <p class="prose" style="margin-bottom:1.25rem;">The provisional assessment you have just reviewed is based on information provided without a site visit. To proceed to a certified, installed Lightning Protection System, the next step is a <strong>formal site assessment and design</strong>. This is the only commitment required at this stage — the full installation will be quoted separately once we have confirmed the site-specific details.</p>
+
+      <div class="section-h">What Phase 1 includes</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:1.25rem;">
+        ${[
+          ['&#128269; Site Assessment', 'Physical inspection of all structures, confirming dimensions, conductor routing options, and structural suitability as natural down conductors.'],
+          ['&#127759; Soil Resistivity Testing', 'Wenner 4-point method at each structure. Results determine the final earthing electrode design and confirm whether chemical enhancement is required.'],
+          ['&#128203; Detailed LPS Design', 'Full DEHN Risk Tool v3.260 calculation, layout drawings, design specification, and confirmed BOQ per structure — per SANS/IEC 62305-3.'],
+          ['&#128196; Phase 2 & 3 Proposal', 'On completion of Phase 1, Estac will issue a fixed-price quotation for material supply and installation, with no further obligation to proceed.']
+        ].map(([title, desc]) => `
+          <div style="background:var(--surface2);border-radius:var(--radius);padding:12px 14px;border-left:3px solid var(--gold);">
+            <div style="font-size:12px;font-weight:600;color:var(--navy);margin-bottom:4px;">${title}</div>
+            <p class="prose">${desc}</p>
+          </div>`).join('')}
+      </div>
+
+      <div class="section-h">Phase 1 Fee</div>
+      <div style="background:var(--navy);border-radius:var(--radius);padding:1.25rem 1.5rem;margin-bottom:1.25rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+        <div>
+          <div style="font-size:11px;color:rgba(200,168,75,0.7);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Site Assessment &amp; Design</div>
+          <div style="font-size:13px;color:#e8e4d8;line-height:1.6;">Includes site assessment report, soil resistivity testing,<br>detailed LPS design, BOQ and layout drawings per structure.</div>
+          <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:6px;">Travel and accommodation charged at cost if site is outside Gauteng.</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;">
+          <div style="font-size:11px;color:rgba(200,168,75,0.7);text-transform:uppercase;letter-spacing:0.06em;">From</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:500;color:var(--gold);">R ${fmt(phase1Fee)}</div>
+          <div style="font-size:10px;color:rgba(255,255,255,0.4);">excl. VAT &nbsp;·&nbsp; R ${fmt(phase1FeeVAT)} incl. VAT</div>
+        </div>
+      </div>
+
+      <div class="section-h">What you are agreeing to</div>
+      <div style="background:var(--surface2);border-radius:var(--radius);padding:1rem 1.25rem;margin-bottom:1.25rem;font-size:12px;color:var(--text-secondary);line-height:1.8;">
+        <p style="margin-bottom:6px;">By accepting Phase 1, you are authorising Estac Engineering to proceed with the site assessment and design only. <strong style="color:var(--navy);">You are not committing to the installation or any further costs beyond the Phase 1 fee.</strong></p>
+        <p>Phase 2 (material supply) and Phase 3 (installation and COC) will be quoted separately following Phase 1. You retain full discretion to proceed or not at each stage.</p>
+      </div>
+
+      <div style="background:var(--gold-light);border:1px solid var(--gold);border-radius:var(--radius);padding:1.25rem 1.5rem;margin-bottom:1.25rem;">
+        <div style="font-size:12px;font-weight:600;color:var(--navy);margin-bottom:8px;">&#128221; Acceptance — Phase 1: Site Assessment &amp; Design</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+          <div>
+            <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Client / Company</div>
+            <div style="border-bottom:1px solid #c8a84b;height:24px;"></div>
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Date</div>
+            <div style="border-bottom:1px solid #c8a84b;height:24px;"></div>
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Name</div>
+            <div style="border-bottom:1px solid #c8a84b;height:24px;"></div>
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Signature</div>
+            <div style="border-bottom:1px solid #c8a84b;height:24px;"></div>
+          </div>
+        </div>
+        <div style="font-size:10px;color:#7a5c10;line-height:1.6;">
+          I / We confirm acceptance of the Phase 1 Site Assessment &amp; Design scope at the fee stated above (excl. VAT), and authorise Estac Engineering to proceed accordingly. This acceptance does not constitute a commitment to Phase 2 or Phase 3.
+        </div>
+      </div>
+
+      <div class="doc-footer">
+        <span>${m.docRef} · Estac Engineering (Pty) Ltd</span>
+        <span>VAT 4400316735 · info@estac-engineering.com</span>
+      </div>`;
 
     const out = document.getElementById('outputArea');
     out.style.display = 'block';
@@ -837,7 +1065,7 @@ Ensure qty × rate = amount for every item.`;
       doc.setFillColor(...GOLD);doc.rect(ML,y,40,1,'F');y+=5;
       doc.setTextColor(...MGREY);doc.setFontSize(10);doc.setFont('helvetica','normal');doc.text(m.siteName,ML,y);y+=5;doc.setFontSize(8.5);doc.text(m.siteLocation+(m.gpsCoords?'  |  GPS: '+m.gpsCoords:''),ML,y);y+=12;
       y=grid([{label:'Document Reference',value:m.docRef},{label:'Revision',value:'Rev 0 — Provisional'},{label:'Date of Issue',value:today},{label:'LPS Class Sought',value:'Class '+m.lpsClass+' (LPL '+m.lpsClass+')'},{label:'Mesh / Spacing',value:m.spec.mesh},{label:'Protection Efficiency',value:m.spec.eff},{label:'Insurer',value:m.insurer||'—'},{label:'Standard',value:'SANS 62305 / IEC 62305'}],y);y+=4;
-      doc.setFillColor(...NAVY);doc.roundedRect(ML,y,CW,22,2,2,'F');doc.setTextColor(...GOLD);doc.setFontSize(7);doc.setFont('helvetica','bold');doc.text('PREPARED BY',ML+4,y+5);doc.setTextColor(220,215,200);doc.setFontSize(9);doc.setFont('helvetica','bold');doc.text('Estac Engineering (Pty) Ltd',ML+4,y+11);doc.setFontSize(7.5);doc.setFont('helvetica','normal');doc.setTextColor(180,172,150);doc.text('AI-assisted provisional assessment — requires review by a registered professional engineer prior to issue.',ML+4,y+16.5);
+      doc.setFillColor(...NAVY);doc.roundedRect(ML,y,CW,22,2,2,'F');doc.setTextColor(...GOLD);doc.setFontSize(7);doc.setFont('helvetica','bold');doc.text('PREPARED BY',ML+4,y+5);doc.setTextColor(220,215,200);doc.setFontSize(9);doc.setFont('helvetica','bold');doc.text('Estac Engineering (Pty) Ltd',ML+4,y+11);doc.setFontSize(7.5);doc.setFont('helvetica','normal');doc.setTextColor(180,172,150);doc.text('Provisional Assessment — subject to site survey and review by a registered professional engineer prior to issue.',ML+4,y+16.5);
       doc.addPage();pageNum++;hdr(pageNum);ftr();y=32;
       y=secH(y,'1. Lightning Data & Site Parameters');y+=3;
       y=grid([{label:'Ground Flash Density (Ng)',value:(ld.Ng||'TBC')+' fl/km\u00B2/yr'},{label:'Thunderstorm Days (Td)',value:(ld.Td||'TBC')+' days/yr'},{label:'Location Factor (Cdb)',value:ld.Cdb||'TBC'},{label:'Terrain',value:m.terrain||'—'},{label:'Insurer',value:m.insurer||'—'},{label:'CoC Status',value:m.cocStatus||'—'}],y);y+=2;
