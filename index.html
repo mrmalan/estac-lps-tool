@@ -1774,7 +1774,6 @@ Ensure qty × rate = amount for every item.`;
 banner.innerHTML = '&#9889; Pre-populated from client intake form &mdash; review all fields before generating. <a href="/" style="color:#c8a84b;margin-left:12px;font-size:11px;">Clear &amp; start fresh</a>';
 })();
 (function() {
- (function() {
   function fillFromParams() {
     const params = new URLSearchParams(window.location.search);
     if (!params.toString()) return;
@@ -1827,7 +1826,3 @@ banner.innerHTML = '&#9889; Pre-populated from client intake form &mdash; review
     setTimeout(fillFromParams, 800);
   }
 })();
-</script>
-
-</body>
-</html>
