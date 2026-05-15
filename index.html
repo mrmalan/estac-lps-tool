@@ -819,51 +819,16 @@ Ensure qty × rate = amount for every item.`;
       return boqActiveItems().reduce((s, i) => s + Number(i.amount || 0), 0);
     }
 
-    function refreshBoqTotal() {
-      const el = document.getElementById('boq-running-total');
-      if (el) el.textContent = 'R ' + fmt(boqRunningTotal());
-    }
-
     function toggleBoqItem(idx) {
       const item = window._boqState.items[idx];
       if (!item) return;
       item._excluded = !item._excluded;
-      const row = document.getElementById('boq-row-' + idx);
-      if (row) {
-        if (item._excluded) {
-          row.style.opacity = '0.4';
-          row.style.textDecoration = 'line-through';
-          row.style.background = 'var(--surface2)';
-        } else {
-          row.style.opacity = '1';
-          row.style.textDecoration = 'none';
-          row.style.background = '';
-        }
-      }
-      refreshBoqTotal();
+      renderBoqTable();
     }
 
     function removeAddedItem(addedIdx) {
       window._boqState.added.splice(addedIdx, 1);
-      renderAddedItems();
-      refreshBoqTotal();
-    }
-
-    function renderAddedItems() {
-      const container = document.getElementById('boq-added-rows');
-      if (!container) return;
-      container.innerHTML = window._boqState.added.map((item, i) => `
-        <tr style="background:rgba(26,106,74,0.04);border-left:3px solid var(--green-text);">
-          <td style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--green-text);">+</td>
-          <td>${item.description}</td>
-          <td style="font-family:'IBM Plex Mono',monospace;font-size:11px;">${item.unit}</td>
-          <td style="text-align:right;font-family:'IBM Plex Mono',monospace;font-size:11px;">${item.qty}</td>
-          <td style="text-align:right;font-family:'IBM Plex Mono',monospace;font-size:11px;">${fmt(item.rate)}</td>
-          <td style="text-align:right;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;">${fmt(item.amount)}</td>
-          <td style="text-align:center;padding:4px 6px;">
-            <button onclick="removeAddedItem(${i})" style="background:none;border:none;cursor:pointer;color:#C0392B;font-size:11px;padding:2px 4px;" title="Remove">&#10005;</button>
-          </td>
-        </tr>`).join('');
+      renderBoqTable();
     }
 
     function addBoqItem() {
@@ -875,11 +840,50 @@ Ensure qty × rate = amount for every item.`;
       const amount = qty * rate;
       const nextNum = window._boqState.items.length + window._boqState.added.length + 1;
       window._boqState.added.push({ item: String(nextNum), description: desc, unit, qty, rate, amount });
-      renderAddedItems();
-      refreshBoqTotal();
       document.getElementById('add-desc').value = '';
+      document.getElementById('add-unit').value = '';
       document.getElementById('add-qty').value = '';
       document.getElementById('add-rate').value = '';
+      renderBoqTable();
+    }
+
+    function renderBoqTable() {
+      const tbody = document.getElementById('boq-tbody');
+      if (!tbody) return;
+
+      const aiRows = window._boqState.items.map((item, idx) => {
+        const excluded = item._excluded;
+        return `<tr id="boq-row-${idx}" style="opacity:${excluded?'0.38':'1'};transition:opacity 0.15s;">
+          <td style="text-align:center;padding:4px 6px;">
+            <input type="checkbox" ${excluded?'checked':''} onchange="toggleBoqItem(${idx})"
+              style="width:14px;height:14px;accent-color:#C0392B;cursor:pointer;">
+          </td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:11px;${excluded?'text-decoration:line-through;color:var(--text-muted);':''}">${item.item}</td>
+          <td style="${excluded?'text-decoration:line-through;color:var(--text-muted);':''}">${item.description}</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:11px;${excluded?'text-decoration:line-through;color:var(--text-muted);':''}">${item.unit}</td>
+          <td style="text-align:right;font-family:'IBM Plex Mono',monospace;font-size:11px;${excluded?'text-decoration:line-through;color:var(--text-muted);':''}">${item.qty}</td>
+          <td style="text-align:right;font-family:'IBM Plex Mono',monospace;font-size:11px;${excluded?'text-decoration:line-through;color:var(--text-muted);':''}">${fmt(item.rate)}</td>
+          <td style="text-align:right;font-family:'IBM Plex Mono',monospace;font-size:11px;${excluded?'text-decoration:line-through;color:var(--text-muted);':''}">${fmt(item.amount)}</td>
+        </tr>`;
+      }).join('');
+
+      const addedRows = window._boqState.added.map((item, i) => `
+        <tr style="background:rgba(26,106,74,0.05);">
+          <td style="text-align:center;padding:4px 6px;">
+            <button onclick="removeAddedItem(${i})" title="Remove" style="background:none;border:none;cursor:pointer;color:#C0392B;font-size:13px;line-height:1;padding:0;">&#10005;</button>
+          </td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#1A6B4A;font-weight:600;">+${item.item}</td>
+          <td style="color:#1A6B4A;">${item.description}</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:11px;">${item.unit}</td>
+          <td style="text-align:right;font-family:'IBM Plex Mono',monospace;font-size:11px;">${item.qty}</td>
+          <td style="text-align:right;font-family:'IBM Plex Mono',monospace;font-size:11px;">${fmt(item.rate)}</td>
+          <td style="text-align:right;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;color:#1A6B4A;">${fmt(item.amount)}</td>
+        </tr>`).join('');
+
+      tbody.innerHTML = aiRows + addedRows;
+
+      const totalEl = document.getElementById('boq-running-total');
+      if (totalEl) totalEl.textContent = 'R ' + fmt(boqRunningTotal());
     }
 
     document.getElementById('tab-boq').innerHTML = `
@@ -891,31 +895,20 @@ Ensure qty × rate = amount for every item.`;
       <div class="doc-subtitle">${m.siteName} &nbsp;·&nbsp; ${m.siteLocation}</div>
       <div class="preliminary-banner">&#9888; Provisional Rates · Subject to Site Survey, Final Design &amp; Supplier Quotation</div>
       <div style="background:var(--blue-bg);border:0.5px solid var(--blue-text);border-radius:var(--radius);padding:9px 13px;margin-bottom:1rem;font-size:11.5px;color:var(--blue-text);">
-        &#9432; <strong>Working view:</strong> Tick any item to exclude it from the total and from client exports. Struck-through items remain visible here but will not appear in the PDF or Word document.
+        &#9432; <strong>Working view:</strong> Tick any row to exclude it from the total and from client exports. Excluded items are struck through but remain visible here. Added items appear in green.
       </div>
       <table class="boq-table" style="table-layout:fixed;">
         <colgroup><col style="width:32px"/><col style="width:36px"/><col/><col style="width:50px"/><col style="width:44px"/><col style="width:96px"/><col style="width:104px"/></colgroup>
-        <tr>
-          <th title="Tick to exclude from client export">Excl.</th>
-          <th>Item</th><th>Description</th><th>Unit</th>
-          <th style="text-align:right">Qty</th>
-          <th style="text-align:right">Rate (ZAR)</th>
-          <th style="text-align:right">Amount (ZAR)</th>
-        </tr>
-        ${window._boqState.items.map((item, idx) => `
-        <tr id="boq-row-${idx}" style="transition:opacity 0.2s,text-decoration 0.2s;">
-          <td style="text-align:center;padding:4px 6px;">
-            <input type="checkbox" onchange="toggleBoqItem(${idx})" title="Exclude from client export"
-              style="width:14px;height:14px;accent-color:var(--red-text);cursor:pointer;">
-          </td>
-          <td style="font-family:'IBM Plex Mono',monospace;font-size:11px;">${item.item}</td>
-          <td>${item.description}</td>
-          <td style="font-family:'IBM Plex Mono',monospace;font-size:11px;">${item.unit}</td>
-          <td style="text-align:right;font-family:'IBM Plex Mono',monospace;font-size:11px;">${item.qty}</td>
-          <td style="text-align:right;font-family:'IBM Plex Mono',monospace;font-size:11px;">${fmt(item.rate)}</td>
-          <td style="text-align:right;font-family:'IBM Plex Mono',monospace;font-size:11px;">${fmt(item.amount)}</td>
-        </tr>`).join('')}
-        <tbody id="boq-added-rows"></tbody>
+        <thead>
+          <tr>
+            <th title="Tick to exclude">Excl.</th>
+            <th>Item</th><th>Description</th><th>Unit</th>
+            <th style="text-align:right">Qty</th>
+            <th style="text-align:right">Rate (ZAR)</th>
+            <th style="text-align:right">Amount (ZAR)</th>
+          </tr>
+        </thead>
+        <tbody id="boq-tbody"></tbody>
       </table>
 
       <div class="boq-total">
@@ -942,7 +935,7 @@ Ensure qty × rate = amount for every item.`;
           </div>
           <div>
             <label style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:4px;">Rate (ZAR excl.)</label>
-            <input type="number" id="add-rate" placeholder="0.00" min="0" style="font-size:12px;">
+            <input type="number" id="add-rate" placeholder="0.00" min="0" step="0.01" style="font-size:12px;">
           </div>
           <button onclick="addBoqItem()" style="padding:9px 16px;background:var(--navy);color:var(--gold);border:none;border-radius:var(--radius);font-family:'IBM Plex Sans',sans-serif;font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;">+ Add</button>
         </div>
@@ -952,6 +945,9 @@ Ensure qty × rate = amount for every item.`;
         <span>${m.docRef}-BOQ · Rev 0 Provisional</span>
         <span>Rates to be confirmed against Riken / supplier quotations following site survey</span>
       </div>`;
+
+    // Initial render of the BOQ table
+    renderBoqTable();
 
     document.getElementById('tab-notes').innerHTML = `
       <div class="doc-header">
