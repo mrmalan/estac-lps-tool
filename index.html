@@ -855,7 +855,7 @@ Ensure qty × rate = amount for every item.`;
         const excluded = item._excluded;
         return `<tr id="boq-row-${idx}" style="opacity:${excluded?'0.38':'1'};transition:opacity 0.15s;">
           <td style="text-align:center;padding:4px 6px;">
-            <input type="checkbox" ${excluded?'checked':''} onchange="toggleBoqItem(${idx})"
+            <input type="checkbox" ${excluded?'checked':''} data-boq-idx="${idx}"
               style="width:14px;height:14px;accent-color:#C0392B;cursor:pointer;">
           </td>
           <td style="font-family:'IBM Plex Mono',monospace;font-size:11px;${excluded?'text-decoration:line-through;color:var(--text-muted);':''}">${item.item}</td>
@@ -870,7 +870,7 @@ Ensure qty × rate = amount for every item.`;
       const addedRows = window._boqState.added.map((item, i) => `
         <tr style="background:rgba(26,106,74,0.05);">
           <td style="text-align:center;padding:4px 6px;">
-            <button onclick="removeAddedItem(${i})" title="Remove" style="background:none;border:none;cursor:pointer;color:#C0392B;font-size:13px;line-height:1;padding:0;">&#10005;</button>
+            <button data-remove-idx="${i}" title="Remove" style="background:none;border:none;cursor:pointer;color:#C0392B;font-size:13px;line-height:1;padding:0;">&#10005;</button>
           </td>
           <td style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#1A6B4A;font-weight:600;">+${item.item}</td>
           <td style="color:#1A6B4A;">${item.description}</td>
@@ -882,8 +882,41 @@ Ensure qty × rate = amount for every item.`;
 
       tbody.innerHTML = aiRows + addedRows;
 
+      // Event delegation — attach once to tbody, handle all clicks
+      tbody.onclick = function(e) {
+        const cb = e.target.closest('input[data-boq-idx]');
+        if (cb) {
+          const idx = parseInt(cb.getAttribute('data-boq-idx'));
+          const item = window._boqState.items[idx];
+          if (item) { item._excluded = !item._excluded; renderBoqTable(); }
+          return;
+        }
+        const btn = e.target.closest('button[data-remove-idx]');
+        if (btn) {
+          const i = parseInt(btn.getAttribute('data-remove-idx'));
+          window._boqState.added.splice(i, 1);
+          renderBoqTable();
+        }
+      };
+
       const totalEl = document.getElementById('boq-running-total');
       if (totalEl) totalEl.textContent = 'R ' + fmt(boqRunningTotal());
+    }
+
+    function addBoqItem() {
+      const desc = document.getElementById('add-desc')?.value.trim();
+      const unit = document.getElementById('add-unit')?.value.trim() || 'Allow';
+      const qty  = parseFloat(document.getElementById('add-qty')?.value) || 1;
+      const rate = parseFloat(document.getElementById('add-rate')?.value) || 0;
+      if (!desc) { alert('Please enter a description for the item.'); return; }
+      const amount = qty * rate;
+      const nextNum = window._boqState.items.length + window._boqState.added.length + 1;
+      window._boqState.added.push({ item: String(nextNum), description: desc, unit, qty, rate, amount });
+      document.getElementById('add-desc').value = '';
+      document.getElementById('add-unit').value = '';
+      document.getElementById('add-qty').value = '';
+      document.getElementById('add-rate').value = '';
+      renderBoqTable();
     }
 
     document.getElementById('tab-boq').innerHTML = `
@@ -937,7 +970,7 @@ Ensure qty × rate = amount for every item.`;
             <label style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:4px;">Rate (ZAR excl.)</label>
             <input type="number" id="add-rate" placeholder="0.00" min="0" step="0.01" style="font-size:12px;">
           </div>
-          <button onclick="addBoqItem()" style="padding:9px 16px;background:var(--navy);color:var(--gold);border:none;border-radius:var(--radius);font-family:'IBM Plex Sans',sans-serif;font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;">+ Add</button>
+          <button id="boq-add-btn" style="padding:9px 16px;background:var(--navy);color:var(--gold);border:none;border-radius:var(--radius);font-family:'IBM Plex Sans',sans-serif;font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;">+ Add</button>
         </div>
       </div>
 
@@ -946,8 +979,9 @@ Ensure qty × rate = amount for every item.`;
         <span>Rates to be confirmed against Riken / supplier quotations following site survey</span>
       </div>`;
 
-    // Initial render of the BOQ table
+    // Initial render of the BOQ table and wire up Add button
     renderBoqTable();
+    document.getElementById('boq-add-btn').addEventListener('click', addBoqItem);
 
     document.getElementById('tab-notes').innerHTML = `
       <div class="doc-header">
