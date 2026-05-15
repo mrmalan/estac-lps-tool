@@ -197,6 +197,17 @@
         <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">To get coordinates from Google Maps: right-click your site on the map and click the coordinates that appear at the top of the menu.</div>
       </div>
       <div class="form-group">
+        <label>Electrical Supply Type</label>
+        <select id="electricalSupply">
+          <option value="">— Select —</option>
+          <option value="Single phase (230V)">Single phase (230V)</option>
+          <option value="Three phase (400V)">Three phase (400V)</option>
+          <option value="Three phase with neutral (400V/230V)">Three phase with neutral (400V/230V)</option>
+          <option value="Off-grid / generator only">Off-grid / generator only</option>
+          <option value="Mixed / unsure">Mixed / unsure</option>
+        </select>
+      </div>
+      <div class="form-group">
         <label>Google Maps Link (optional)</label>
         <input type="text" id="mapsLink" placeholder="e.g. https://maps.app.goo.gl/..." />
       </div>
@@ -531,6 +542,7 @@
     const footprint      = document.getElementById('footprint').value;
     const occupancy      = document.getElementById('occupancy').value;
     const siteContents   = document.getElementById('siteContents').value;
+    const electricalSupply = document.getElementById('electricalSupply').value;
     const existingLPS    = document.getElementById('existingLPS').value;
     const insurer        = document.getElementById('insurer').value;
     const priorInsp      = document.getElementById('priorInspection').value;
@@ -571,6 +583,7 @@ SITE DETAILS:
 - Footprint: ${footprint || 'TBC'} m²
 - Typical Occupants: ${occupancy || 'Not specified'}
 - Site Contents / Primary Consequence: ${siteContents || 'Not specified'}
+- Electrical Supply: ${electricalSupply || 'Not specified'}
 - Existing LPS: ${existingLPS || 'None'}
 - Property Insurer: ${insurer || 'Not specified'}
 - Prior LPS Inspection: ${priorInsp || 'None recorded'}
@@ -686,6 +699,7 @@ Ensure qty × rate = amount for every item.`;
         siteLocation, lpsClass: selectedLPS, spec,
         terrain, siteUse, buildingUse, roofType, structMat,
         buildingHeight, heightM, footprint, occupancy, siteContents,
+        electricalSupply,
         existingLPS, insurer, priorInsp, cocStatus, gpsCoords, mapsLink
       };
 
@@ -720,6 +734,7 @@ Ensure qty × rate = amount for every item.`;
       m.footprint ? `<span><strong>Footprint:</strong> ${m.footprint} m²</span>` : '',
       m.occupancy ? `<span><strong>Occupants:</strong> ${m.occupancy}</span>` : '',
       m.siteContents ? `<span><strong>Contents:</strong> ${m.siteContents}</span>` : '',
+      m.electricalSupply ? `<span><strong>Electrical supply:</strong> ${m.electricalSupply}</span>` : '',
       m.existingLPS ? `<span><strong>Existing LPS:</strong> ${m.existingLPS}</span>` : '',
     ].filter(Boolean).join('');
 
@@ -1367,7 +1382,7 @@ Ensure qty × rate = amount for every item.`;
       set('insurer',         params.get('insurer'));
       set('priorInspection', params.get('priorInspection'));
       set('cocStatus',       params.get('cocStatus'));
-      set('additionalNotes', params.get('additionalNotes'));
+      set('electricalSupply', params.get('electricalSupply'));
 
       var siteNameEl = document.getElementById('siteName');
       var siteNameParam = params.get('siteName');
