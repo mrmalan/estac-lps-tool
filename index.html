@@ -834,34 +834,6 @@ Ensure qty × rate = amount for every item.`;
       return boqActiveItems().reduce((s, i) => s + Number(i.amount || 0), 0);
     }
 
-    function toggleBoqItem(idx) {
-      const item = window._boqState.items[idx];
-      if (!item) return;
-      item._excluded = !item._excluded;
-      renderBoqTable();
-    }
-
-    function removeAddedItem(addedIdx) {
-      window._boqState.added.splice(addedIdx, 1);
-      renderBoqTable();
-    }
-
-    function addBoqItem() {
-      const desc = document.getElementById('add-desc')?.value.trim();
-      const unit = document.getElementById('add-unit')?.value.trim() || 'Allow';
-      const qty  = parseFloat(document.getElementById('add-qty')?.value) || 1;
-      const rate = parseFloat(document.getElementById('add-rate')?.value) || 0;
-      if (!desc) { alert('Please enter a description for the item.'); return; }
-      const amount = qty * rate;
-      const nextNum = window._boqState.items.length + window._boqState.added.length + 1;
-      window._boqState.added.push({ item: String(nextNum), description: desc, unit, qty, rate, amount });
-      document.getElementById('add-desc').value = '';
-      document.getElementById('add-unit').value = '';
-      document.getElementById('add-qty').value = '';
-      document.getElementById('add-rate').value = '';
-      renderBoqTable();
-    }
-
     function renderBoqTable() {
       const tbody = document.getElementById('boq-tbody');
       if (!tbody) return;
@@ -916,22 +888,6 @@ Ensure qty × rate = amount for every item.`;
 
       const totalEl = document.getElementById('boq-running-total');
       if (totalEl) totalEl.textContent = 'R ' + fmt(boqRunningTotal());
-    }
-
-    function addBoqItem() {
-      const desc = document.getElementById('add-desc')?.value.trim();
-      const unit = document.getElementById('add-unit')?.value.trim() || 'Allow';
-      const qty  = parseFloat(document.getElementById('add-qty')?.value) || 1;
-      const rate = parseFloat(document.getElementById('add-rate')?.value) || 0;
-      if (!desc) { alert('Please enter a description for the item.'); return; }
-      const amount = qty * rate;
-      const nextNum = window._boqState.items.length + window._boqState.added.length + 1;
-      window._boqState.added.push({ item: String(nextNum), description: desc, unit, qty, rate, amount });
-      document.getElementById('add-desc').value = '';
-      document.getElementById('add-unit').value = '';
-      document.getElementById('add-qty').value = '';
-      document.getElementById('add-rate').value = '';
-      renderBoqTable();
     }
 
     document.getElementById('tab-boq').innerHTML = `
@@ -1423,10 +1379,6 @@ Ensure qty × rate = amount for every item.`;
   window.generateReport = generateReport;
   window.exportPDF      = exportPDF;
   window.exportWord     = exportWord;
-  window.toggleBoqItem  = toggleBoqItem;
-  window.removeAddedItem= removeAddedItem;
-  window.addBoqItem     = addBoqItem;
-  window.renderBoqTable = renderBoqTable;
 
 </script>
 </body>
