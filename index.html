@@ -124,10 +124,14 @@
   .section-h { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.09em; color: var(--navy); margin: 1.1rem 0 0.5rem; padding-bottom: 4px; border-bottom: 0.5px solid var(--gold); }
 
   .risk-table, .boq-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 0.5rem; table-layout: fixed; }
-  .risk-table th, .boq-table th { text-align: left; padding: 7px 9px; background: var(--navy); color: var(--gold); font-weight: 500; font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; }
-  .risk-table td, .boq-table td { padding: 7px 9px; border-bottom: 0.5px solid var(--border); color: var(--text-primary); vertical-align: top; word-wrap: break-word; }
+  .risk-table th, .boq-table th { text-align: left; padding: 7px 8px; background: var(--navy); color: var(--gold); font-weight: 500; font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; white-space: nowrap; }
+  .risk-table td, .boq-table td { padding: 6px 8px; border-bottom: 0.5px solid var(--border); color: var(--text-primary); vertical-align: top; word-wrap: break-word; overflow-wrap: break-word; }
   .risk-table tr:last-child td, .boq-table tr:last-child td { border-bottom: none; }
   .risk-table tr:nth-child(even) td, .boq-table tr:nth-child(even) td { background: var(--surface2); }
+  .boq-table td:nth-child(5), .boq-table td:nth-child(6), .boq-table td:nth-child(7),
+  .boq-table th:nth-child(5), .boq-table th:nth-child(6), .boq-table th:nth-child(7) { text-align: right; }
+  .boq-table td:nth-child(1), .boq-table td:nth-child(2) { text-align: center; }
+  .boq-table th:nth-child(4) { text-align: center; }
 
   .boq-total { margin-top: 0.5rem; display: flex; justify-content: flex-end; gap: 10px; align-items: baseline; font-size: 13px; color: var(--text-secondary); padding-top: 10px; border-top: 2px solid var(--navy); }
   .boq-total strong { font-size: 18px; font-weight: 500; font-family: 'IBM Plex Mono', monospace; color: var(--navy); }
@@ -489,6 +493,19 @@
   let selectedLPS = 'III';
   let reportData = null;
 
+  // BOQ state helpers — defined at top level so exportPDF/exportWord can access them
+  function boqActiveItems() {
+    if (!window._boqState) return [];
+    return [
+      ...window._boqState.items.filter(i => !i._excluded),
+      ...window._boqState.added
+    ];
+  }
+
+  function boqRunningTotal() {
+    return boqActiveItems().reduce((s, i) => s + Number(i.amount || 0), 0);
+  }
+
   function selectLPS(cls) {
     document.querySelectorAll('.lps-card').forEach(c => c.classList.remove('selected'));
     document.getElementById('lps-' + cls).classList.add('selected');
@@ -792,7 +809,13 @@ Ensure qty × rate = amount for every item.`;
 
       <div class="section-h">Risk Analysis — IEC 62305-2</div>
       <table class="risk-table">
-        <colgroup><col style="width:70px"/><col/><col style="width:110px"/><col style="width:90px"/><col style="width:110px"/></colgroup>
+        <colgroup>
+          <col style="width:8%"/>
+          <col style="width:36%"/>
+          <col style="width:18%"/>
+          <col style="width:14%"/>
+          <col style="width:14%"/>
+        </colgroup>
         <tr><th>Component</th><th>Description</th><th>Est. Value</th><th>Tolerable</th><th>Verdict</th></tr>
         ${(ra.risk_components || []).map(r => `<tr>
           <td style="font-family:'IBM Plex Mono',monospace;font-weight:500;">${r.component}</td>
@@ -822,17 +845,6 @@ Ensure qty × rate = amount for every item.`;
       items: boqItems.map((item, idx) => ({ ...item, _id: idx, _excluded: false })),
       added: []
     };
-
-    function boqActiveItems() {
-      return [
-        ...window._boqState.items.filter(i => !i._excluded),
-        ...window._boqState.added
-      ];
-    }
-
-    function boqRunningTotal() {
-      return boqActiveItems().reduce((s, i) => s + Number(i.amount || 0), 0);
-    }
 
     function renderBoqTable() {
       const tbody = document.getElementById('boq-tbody');
@@ -902,7 +914,15 @@ Ensure qty × rate = amount for every item.`;
         &#9432; <strong>Working view:</strong> Tick any row to exclude it from the total and from client exports. Excluded items are struck through but remain visible here. Added items appear in green.
       </div>
       <table class="boq-table" style="table-layout:fixed;">
-        <colgroup><col style="width:32px"/><col style="width:36px"/><col/><col style="width:50px"/><col style="width:44px"/><col style="width:96px"/><col style="width:104px"/></colgroup>
+        <colgroup>
+          <col style="width:4%"/>
+          <col style="width:6%"/>
+          <col style="width:44%"/>
+          <col style="width:7%"/>
+          <col style="width:6%"/>
+          <col style="width:16%"/>
+          <col style="width:17%"/>
+        </colgroup>
         <thead>
           <tr>
             <th title="Tick to exclude">Excl.</th>
