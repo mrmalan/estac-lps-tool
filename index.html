@@ -1368,6 +1368,17 @@ Ensure qty × rate = amount for every item.`;
     }
   })();
 
+  // Expose all functions used in onclick attributes to global scope
+  window.selectLPS      = selectLPS;
+  window.switchTab      = switchTab;
+  window.generateReport = generateReport;
+  window.exportPDF      = exportPDF;
+  window.exportWord     = exportWord;
+  window.toggleBoqItem  = toggleBoqItem;
+  window.removeAddedItem= removeAddedItem;
+  window.addBoqItem     = addBoqItem;
+  window.renderBoqTable = renderBoqTable;
+
 </script>
 </body>
 </html>
