@@ -125,13 +125,18 @@
 
   .risk-table, .boq-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 0.5rem; table-layout: fixed; }
   .risk-table th, .boq-table th { text-align: left; padding: 7px 8px; background: var(--navy); color: var(--gold); font-weight: 500; font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; white-space: nowrap; }
-  .risk-table td, .boq-table td { padding: 6px 8px; border-bottom: 0.5px solid var(--border); color: var(--text-primary); vertical-align: top; word-wrap: break-word; overflow-wrap: break-word; }
+  .risk-table td, .boq-table td { padding: 6px 8px; border-bottom: 0.5px solid var(--border); color: var(--text-primary); vertical-align: middle; word-wrap: break-word; overflow-wrap: break-word; }
   .risk-table tr:last-child td, .boq-table tr:last-child td { border-bottom: none; }
   .risk-table tr:nth-child(even) td, .boq-table tr:nth-child(even) td { background: var(--surface2); }
-  .boq-table td:nth-child(5), .boq-table td:nth-child(6), .boq-table td:nth-child(7),
-  .boq-table th:nth-child(5), .boq-table th:nth-child(6), .boq-table th:nth-child(7) { text-align: right; }
-  .boq-table td:nth-child(1), .boq-table td:nth-child(2) { text-align: center; }
-  .boq-table th:nth-child(4) { text-align: center; }
+  .boq-table td:nth-child(1), .boq-table th:nth-child(1) { text-align: center; white-space: nowrap; }
+  .boq-table td:nth-child(2), .boq-table th:nth-child(2) { white-space: nowrap; }
+  .boq-table td:nth-child(4), .boq-table th:nth-child(4) { white-space: nowrap; text-align: center; }
+  .boq-table td:nth-child(5), .boq-table th:nth-child(5) { white-space: nowrap; text-align: right; }
+  .boq-table td:nth-child(6), .boq-table th:nth-child(6),
+  .boq-table td:nth-child(7), .boq-table th:nth-child(7) { white-space: nowrap; text-align: right; font-family: 'IBM Plex Mono', monospace; }
+  .bod-section { margin-bottom: 1.1rem; padding: 0.75rem 1rem; background: var(--surface2); border-radius: var(--radius); border-left: 3px solid var(--gold); }
+  .bod-section-title { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.09em; color: var(--navy); margin-bottom: 6px; }
+  .bod-section p { font-size: 12.5px; color: var(--text-secondary); line-height: 1.75; margin: 0; }
 
   .boq-total { margin-top: 0.5rem; display: flex; justify-content: flex-end; gap: 10px; align-items: baseline; font-size: 13px; color: var(--text-secondary); padding-top: 10px; border-top: 2px solid var(--navy); }
   .boq-total strong { font-size: 18px; font-weight: 500; font-family: 'IBM Plex Mono', monospace; color: var(--navy); }
@@ -484,6 +489,10 @@
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
         Export Word
       </button>
+      <button class="export-btn" id="saveBoqBtn" onclick="saveBoqCSV()" style="background:#1A6B4A;" title="Download the current BOQ (with your changes) as a CSV file">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        Save BOQ
+      </button>
     </div>
   </div>
 
@@ -590,7 +599,7 @@ Generate a structured provisional LPS risk assessment and BOQ for the following 
 
 SITE DETAILS:
 - Site / Project Name: ${siteName}${structureName ? ' — ' + structureName : ''}
-- Location: ${siteLocation}${gpsCoords ? ' (GPS: ' + gpsCoords + ')' : ''}
+- Location: ${siteLocation}${gpsCoords ? ' (GPS: ' + gpsCoords + ')' : ' (NO GPS PROVIDED)'}
 - Terrain: ${terrain || 'Not specified'}
 - Primary Site Use: ${siteUse || 'Not specified'}
 - Building Use: ${buildingUse || 'Not specified'}
@@ -610,6 +619,12 @@ SITE DETAILS:
 
 STANDARDS: SANS 62305 / IEC 62305-1 through -4. Use DEHN Risk Tool methodology.
 
+IMPORTANT — LOCATION CONFIDENCE: You must assess how confident you are in the lightning data for this location and include this in your response:
+- "high" — GPS coordinates provided OR location is a well-known South African town/city with reliable SAWS data
+- "medium" — location is recognisable but data is interpolated from nearby stations or regional averages
+- "low" — location is a farm name, very small settlement, ambiguous, or unrecognised
+Also flag if the place name could refer to multiple locations in South Africa (e.g. same name in different provinces).
+
 Respond ONLY in strict JSON with NO markdown or code fences:
 
 {
@@ -618,7 +633,10 @@ Respond ONLY in strict JSON with NO markdown or code fences:
     "Td": "<thunderstorm days/year>",
     "source": "<data source>",
     "Cdb": "<location factor per IEC 62305-2>",
-    "regional_note": "<1-2 sentences on lightning severity for this region>"
+    "regional_note": "<1-2 sentences on lightning severity for this region>",
+    "location_confidence": "high | medium | low",
+    "location_assumed": "<exact location assumed for data lookup — state town/area used if different from input>",
+    "location_ambiguity": "<null if unambiguous, otherwise describe the ambiguity e.g. 'Elgin exists in Western Cape and Gauteng — assumed Western Cape based on province field'>"
   },
   "risk_assessment": {
     "structure_description": "<brief description>",
@@ -717,7 +735,10 @@ Ensure qty × rate = amount for every item.`;
         terrain, siteUse, buildingUse, roofType, structMat,
         buildingHeight, heightM, footprint, occupancy, siteContents,
         electricalSupply,
-        existingLPS, insurer, priorInsp, cocStatus, gpsCoords, mapsLink
+        existingLPS, insurer, priorInsp, cocStatus, gpsCoords, mapsLink,
+        locationConfidence: parsed.lightning_data?.location_confidence || 'medium',
+        locationAssumed: parsed.lightning_data?.location_assumed || siteLocation,
+        locationAmbiguity: parsed.lightning_data?.location_ambiguity || null,
       };
 
       hideStatus();
@@ -763,19 +784,25 @@ Ensure qty × rate = amount for every item.`;
       !boqNotesRaw.toLowerCase().includes('indicative only')
       ? boqNotesRaw : '';
 
-    // Basis of Design — filter out vague/short content
-    const isValid = s => s && String(s).trim().length > 15 &&
-      !String(s).toLowerCase().includes('tbc') &&
-      !String(s).toLowerCase().includes('to be confirmed') &&
-      !String(s).toLowerCase().includes('not applicable');
+    // Basis of Design — strict content validation
+    const isValid = s => {
+      if (!s || typeof s !== 'string') return false;
+      const clean = s.trim();
+      if (clean.length < 20) return false;
+      const filler = ['tbc','to be confirmed','not applicable','n/a','per site survey','to be determined','see above'];
+      return !filler.some(f => clean.toLowerCase() === f || clean.toLowerCase().startsWith(f + '.'));
+    };
+
+    // Strip any unicode box-drawing or other junk characters the AI might produce
+    const clean = s => (s || '').replace(/[\u2500-\u257F\u2580-\u259F\u25A0-\u25FF]/g, '').replace(/\s{3,}/g, '  ').trim();
 
     const bodSections = [
-      { title: 'Air Termination Network', content: isValid(bod.air_termination) ? bod.air_termination : m.spec.air_term },
-      { title: 'Down Conductors', content: isValid(bod.down_conductors) ? bod.down_conductors : `Minimum 2 down conductors for Class ${m.lpsClass}, spaced per IEC 62305-3 Table 4. Routing to be confirmed on site survey.` },
-      { title: 'Earth Termination System', content: isValid(bod.earth_termination) ? bod.earth_termination : `Type A or B earthing arrangement with minimum ${m.spec.rods} earth rods. Final electrode dimensions subject to soil resistivity testing (Wenner 4-point method).` },
-      { title: 'Equipotential Bonding', content: isValid(bod.equipotential_bonding) ? bod.equipotential_bonding : 'All conductive services entering the structure to be bonded to the LPS at the point of entry per IEC 62305-3 Clause 6.2.' },
-      { title: 'SPD Protection', content: m.spec.spd },
-      { title: 'Separation Distance', content: isValid(bod.separation_distance) ? bod.separation_distance : 'Physical separation distance to be calculated per IEC 62305-3 Clause 6.3 following site survey and confirmed down conductor routing.' },
+      { title: 'Air Termination Network', content: isValid(bod.air_termination) ? clean(bod.air_termination) : m.spec.air_term },
+      { title: 'Down Conductors', content: isValid(bod.down_conductors) ? clean(bod.down_conductors) : `Minimum 2 down conductors for Class ${m.lpsClass}, spaced per IEC 62305-3 Table 4. Routing to be confirmed on site survey.` },
+      { title: 'Earth Termination System', content: isValid(bod.earth_termination) ? clean(bod.earth_termination) : `Type A or B earthing arrangement with minimum ${m.spec.rods} earth rods. Final electrode dimensions subject to soil resistivity testing (Wenner 4-point method).` },
+      { title: 'Equipotential Bonding', content: isValid(bod.equipotential_bonding) ? clean(bod.equipotential_bonding) : 'All conductive services entering the structure to be bonded to the LPS at the point of entry per IEC 62305-3 Clause 6.2.' },
+      { title: 'SPD Protection', content: clean(m.spec.spd) },
+      { title: 'Separation Distance', content: isValid(bod.separation_distance) ? clean(bod.separation_distance) : 'Physical separation distance to be calculated per IEC 62305-3 Clause 6.3 following site survey and confirmed down conductor routing.' },
     ];
 
     document.getElementById('tab-risk').innerHTML = `
@@ -805,6 +832,27 @@ Ensure qty × rate = amount for every item.`;
         <div class="info-cell"><div class="ic-label">CoC Status</div><div class="ic-val">${m.cocStatus || '—'}</div></div>
       </div>
       ${ld.regional_note ? `<p class="prose">${ld.regional_note}</p>` : ''}
+      ${(() => {
+        const conf = (ld.location_confidence || 'medium').toLowerCase();
+        const assumed = ld.location_assumed;
+        const ambig = ld.location_ambiguity && ld.location_ambiguity !== 'null' ? ld.location_ambiguity : null;
+        const hasGps = m.gpsCoords && m.gpsCoords.trim().length > 3;
+        const confConfig = {
+          high:   { bg: 'var(--green-bg)',  border: '#3b6d11', text: 'var(--green-text)', icon: '&#10003;', label: 'High confidence' },
+          medium: { bg: 'var(--amber-bg)',  border: '#854f0b', text: 'var(--amber-text)', icon: '&#9432;',  label: 'Medium confidence' },
+          low:    { bg: 'var(--red-bg)',    border: '#a32d2d', text: 'var(--red-text)',   icon: '&#9888;',  label: 'Low confidence' },
+        };
+        const c = confConfig[conf] || confConfig.medium;
+        let html = `<div style="background:${c.bg};border:0.5px solid ${c.border};border-radius:var(--radius);padding:9px 13px;margin-bottom:0.5rem;font-size:12px;color:${c.text};">
+          <strong>${c.icon} Location data confidence: ${c.label}</strong>`;
+        if (assumed) html += `<br>Location used for data lookup: <strong>${assumed}</strong>`;
+        if (!hasGps) html += `<br><em>No GPS coordinates provided — accuracy can be improved by adding coordinates in the form above.</em>`;
+        html += `</div>`;
+        if (ambig) html += `<div style="background:var(--amber-bg);border:0.5px solid #854f0b;border-radius:var(--radius);padding:9px 13px;margin-bottom:0.5rem;font-size:12px;color:var(--amber-text);">
+          <strong>&#9888; Location ambiguity detected</strong><br>${ambig}
+        </div>`;
+        return html;
+      })()}
       <p class="prose" style="font-size:10px;color:var(--text-muted);">Data source: ${ld.source || 'Regional climatology / SAWS estimate'}</p>
 
       <div class="section-h">Risk Analysis — IEC 62305-2</div>
@@ -850,38 +898,43 @@ Ensure qty × rate = amount for every item.`;
       const tbody = document.getElementById('boq-tbody');
       if (!tbody) return;
 
+      // Assign sequential print numbers to active (non-excluded) items
+      let printNum = 1;
       const aiRows = window._boqState.items.map((item, idx) => {
         const excluded = item._excluded;
-        return `<tr id="boq-row-${idx}" style="opacity:${excluded?'0.38':'1'};transition:opacity 0.15s;">
-          <td style="text-align:center;padding:4px 6px;">
+        const displayNum = excluded ? item.item : String(printNum++);
+        return `<tr id="boq-row-${idx}" style="opacity:${excluded?'0.35':'1'};transition:opacity 0.15s;">
+          <td>
             <input type="checkbox" ${excluded?'checked':''} data-boq-idx="${idx}"
-              style="width:14px;height:14px;accent-color:#C0392B;cursor:pointer;">
+              style="width:14px;height:14px;accent-color:#C0392B;cursor:pointer;display:block;margin:0 auto;">
           </td>
-          <td style="font-family:'IBM Plex Mono',monospace;font-size:11px;${excluded?'text-decoration:line-through;color:var(--text-muted);':''}">${item.item}</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:11px;${excluded?'text-decoration:line-through;color:var(--text-muted);':''}">${displayNum}</td>
           <td style="${excluded?'text-decoration:line-through;color:var(--text-muted);':''}">${item.description}</td>
           <td style="font-family:'IBM Plex Mono',monospace;font-size:11px;${excluded?'text-decoration:line-through;color:var(--text-muted);':''}">${item.unit}</td>
-          <td style="text-align:right;font-family:'IBM Plex Mono',monospace;font-size:11px;${excluded?'text-decoration:line-through;color:var(--text-muted);':''}">${item.qty}</td>
-          <td style="text-align:right;font-family:'IBM Plex Mono',monospace;font-size:11px;${excluded?'text-decoration:line-through;color:var(--text-muted);':''}">${fmt(item.rate)}</td>
-          <td style="text-align:right;font-family:'IBM Plex Mono',monospace;font-size:11px;${excluded?'text-decoration:line-through;color:var(--text-muted);':''}">${fmt(item.amount)}</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:11px;${excluded?'text-decoration:line-through;color:var(--text-muted);':''}">${item.qty}</td>
+          <td style="${excluded?'text-decoration:line-through;color:var(--text-muted);':''}">${fmt(item.rate)}</td>
+          <td style="${excluded?'text-decoration:line-through;color:var(--text-muted);':''}">${fmt(item.amount)}</td>
         </tr>`;
       }).join('');
 
-      const addedRows = window._boqState.added.map((item, i) => `
-        <tr style="background:rgba(26,106,74,0.05);">
-          <td style="text-align:center;padding:4px 6px;">
-            <button data-remove-idx="${i}" title="Remove" style="background:none;border:none;cursor:pointer;color:#C0392B;font-size:13px;line-height:1;padding:0;">&#10005;</button>
+      const addedRows = window._boqState.added.map((item, i) => {
+        const displayNum = String(printNum++);
+        return `<tr style="background:rgba(26,106,74,0.05);">
+          <td>
+            <button data-remove-idx="${i}" title="Remove" style="background:none;border:none;cursor:pointer;color:#C0392B;font-size:13px;line-height:1;padding:0;display:block;margin:0 auto;">&#10005;</button>
           </td>
-          <td style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#1A6B4A;font-weight:600;">+${item.item}</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#1A6B4A;font-weight:600;">${displayNum}</td>
           <td style="color:#1A6B4A;">${item.description}</td>
           <td style="font-family:'IBM Plex Mono',monospace;font-size:11px;">${item.unit}</td>
-          <td style="text-align:right;font-family:'IBM Plex Mono',monospace;font-size:11px;">${item.qty}</td>
-          <td style="text-align:right;font-family:'IBM Plex Mono',monospace;font-size:11px;">${fmt(item.rate)}</td>
-          <td style="text-align:right;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;color:#1A6B4A;">${fmt(item.amount)}</td>
-        </tr>`).join('');
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:11px;">${item.qty}</td>
+          <td>${fmt(item.rate)}</td>
+          <td style="font-weight:600;color:#1A6B4A;">${fmt(item.amount)}</td>
+        </tr>`;
+      }).join('');
 
       tbody.innerHTML = aiRows + addedRows;
 
-      // Event delegation — attach once to tbody, handle all clicks
+      // Event delegation
       tbody.onclick = function(e) {
         const cb = e.target.closest('input[data-boq-idx]');
         if (cb) {
@@ -1008,19 +1061,16 @@ Ensure qty × rate = amount for every item.`;
       ${(bod.design_parameters || []).length ? `
       <div class="section-h">Design Parameters</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:0.75rem;">
-        ${bod.design_parameters.map(p => `
+        ${bod.design_parameters.filter(p => isValid(p)).map(p => `
           <div style="background:var(--surface2);border-radius:var(--radius);padding:8px 12px;font-size:12px;color:var(--text-secondary);border-left:3px solid var(--gold);">
-            ${p}
+            ${clean(p)}
           </div>`).join('')}
       </div>` : ''}
 
       ${bodSections.map(sec => `
-        <div style="margin-bottom:1rem;">
-          <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--navy);margin-bottom:5px;display:flex;align-items:center;gap:6px;">
-            <span style="display:inline-block;width:3px;height:12px;background:var(--gold);border-radius:1px;flex-shrink:0;"></span>
-            ${sec.title}
-          </div>
-          <p class="prose" style="padding-left:9px;">${sec.content}</p>
+        <div class="bod-section">
+          <div class="bod-section-title">${sec.title}</div>
+          <p>${sec.content}</p>
         </div>`).join('')}
 
       <div class="section-h">Provisional Caveats</div>
@@ -1030,7 +1080,7 @@ Ensure qty × rate = amount for every item.`;
           'Soil resistivity testing (Wenner 4-point method) required to finalise earthing electrode design.',
           'Final design subject to full DEHN Risk Tool v3.260 calculation and engineering sign-off.',
           'Certificate of Compliance (COC) to be issued by a registered electrical contractor post-installation and testing only.'
-        ]).map(c => `<p class="prose" style="color:#7a5c10;margin-bottom:4px;">&#9888; ${c}</p>`).join('')}
+        ]).map(c => `<p class="prose" style="color:#7a5c10;margin-bottom:4px;">&#9888; ${clean(c)}</p>`).join('')}
       </div>`;
 
     // CTA — Next Steps tab
@@ -1227,6 +1277,24 @@ Ensure qty × rate = amount for every item.`;
       doc.setTextColor(...MGREY);doc.setFontSize(10);doc.setFont('helvetica','normal');doc.text(m.siteName,ML,y);y+=5;doc.setFontSize(8.5);doc.text(m.siteLocation+(m.gpsCoords?'  |  GPS: '+m.gpsCoords:''),ML,y);y+=12;
       y=grid([{label:'Document Reference',value:m.docRef},{label:'Revision',value:'Rev 0 — Provisional'},{label:'Date of Issue',value:today},{label:'LPS Class Sought',value:'Class '+m.lpsClass+' (LPL '+m.lpsClass+')'},{label:'Mesh / Spacing',value:m.spec.mesh},{label:'Protection Efficiency',value:m.spec.eff},{label:'Insurer',value:m.insurer||'—'},{label:'Standard',value:'SANS 62305 / IEC 62305'}],y);y+=4;
       doc.setFillColor(...NAVY);doc.roundedRect(ML,y,CW,22,2,2,'F');doc.setTextColor(...GOLD);doc.setFontSize(7);doc.setFont('helvetica','bold');doc.text('PREPARED BY',ML+4,y+5);doc.setTextColor(220,215,200);doc.setFontSize(9);doc.setFont('helvetica','bold');doc.text('Estac Engineering (Pty) Ltd',ML+4,y+11);doc.setFontSize(7.5);doc.setFont('helvetica','normal');doc.setTextColor(180,172,150);doc.text('Provisional Assessment — subject to site survey and review by a registered professional engineer prior to issue.',ML+4,y+16.5);
+      y+=28;
+      // Location confidence warning on cover
+      const conf = (m.locationConfidence||'medium').toLowerCase();
+      if (conf === 'low' || conf === 'medium') {
+        const confColor = conf === 'low' ? [252,235,235] : [250,238,218];
+        const confTextColor = conf === 'low' ? [163,45,45] : [133,79,11];
+        const confMsg = conf === 'low'
+          ? 'LOW CONFIDENCE: Location not well recognised. Lightning data is estimated from regional averages. Verify location and consider providing GPS coordinates before issuing.'
+          : 'MEDIUM CONFIDENCE: Lightning data interpolated from regional data. ' + (m.locationAmbiguity && m.locationAmbiguity !== 'null' ? m.locationAmbiguity : 'Confirm correct location before issuing.');
+        doc.setFillColor(...confColor);
+        doc.roundedRect(ML,y,CW,14,1.5,1.5,'F');
+        doc.setTextColor(...confTextColor);
+        doc.setFontSize(7.5);
+        doc.setFont('helvetica','bold');
+        const confLines = doc.splitTextToSize((conf==='low'?'⚠ ':'ℹ ')+confMsg, CW-6);
+        doc.text(confLines, ML+3, y+5);
+        y += 18;
+      }
       doc.addPage();pageNum++;hdr(pageNum);ftr();y=32;
       y=secH(y,'1. Lightning Data & Site Parameters');y+=3;
       y=grid([{label:'Ground Flash Density (Ng)',value:(ld.Ng||'TBC')+' fl/km\u00B2/yr'},{label:'Thunderstorm Days (Td)',value:(ld.Td||'TBC')+' days/yr'},{label:'Location Factor (Cdb)',value:ld.Cdb||'TBC'},{label:'Terrain',value:m.terrain||'—'},{label:'Insurer',value:m.insurer||'—'},{label:'CoC Status',value:m.cocStatus||'—'}],y);y+=2;
@@ -1248,6 +1316,93 @@ Ensure qty × rate = amount for every item.`;
       doc.autoTable({startY:y,head:[['Item','Description','Unit','Qty','Rate (ZAR)','Amount (ZAR)']],body:boqActiveItems().map(i=>[i.item,i.description,i.unit,String(i.qty),fmt(i.rate),fmt(i.amount)]),margin:{left:ML,right:MR},styles:{fontSize:8,cellPadding:2.5,textColor:BLACK,lineColor:[220,217,210],lineWidth:0.3,overflow:'linebreak'},headStyles:{fillColor:NAVY,textColor:GOLD,fontStyle:'bold',fontSize:7.5},alternateRowStyles:{fillColor:LGREY},columnStyles:{0:{cellWidth:12,fontStyle:'bold',textColor:NAVY},1:{cellWidth:'auto'},2:{cellWidth:14,halign:'center'},3:{cellWidth:12,halign:'right'},4:{cellWidth:28,halign:'right'},5:{cellWidth:30,halign:'right',fontStyle:'bold'}},didAddPage:function(){pageNum++;hdr(pageNum);ftr();}});
       const activeTotal = boqRunningTotal();
       y=doc.lastAutoTable.finalY+4;y=chk(y,16);doc.setFillColor(...NAVY);doc.rect(ML,y,CW,10,'F');doc.setFillColor(...GOLD);doc.rect(ML,y,CW,0.8,'F');doc.setTextColor(...GOLD);doc.setFontSize(8.5);doc.setFont('helvetica','bold');doc.text('PROVISIONAL TOTAL (EXCL. VAT)',ML+4,y+6.5);doc.setFontSize(11);doc.text('R '+fmt(activeTotal),PW-MR,y+6.8,{align:'right'});y+=14;doc.setFontSize(7.5);doc.setFont('helvetica','italic');doc.setTextColor(...MGREY);doc.text('VAT @ 15%: R '+fmt(activeTotal*0.15)+'  |  Total incl. VAT: R '+fmt(activeTotal*1.15),ML,y);
+
+      // ── ANNEX B — NEXT STEPS & SITE AUDIT ACCEPTANCE ──
+      doc.addPage(); pageNum++; hdr(pageNum); ftr(); y=32;
+      doc.setFillColor(...GOLD); doc.rect(ML,y,CW,8,'F');
+      doc.setTextColor(...NAVY); doc.setFontSize(9); doc.setFont('helvetica','bold');
+      doc.text('ANNEX B  —  NEXT STEPS & SITE AUDIT ACCEPTANCE', ML+4, y+5.5); y+=14;
+
+      doc.setTextColor(...NAVY); doc.setFontSize(11); doc.setFont('helvetica','bold');
+      doc.text('Next Steps — Proceeding with your LPS', ML, y); y+=6;
+      doc.setFontSize(8.5); doc.setFont('helvetica','normal'); doc.setTextColor(...MGREY);
+      doc.text(m.siteName+' · '+m.siteLocation, ML, y); y+=10;
+
+      // Risk summary callout
+      const ctaRl = (reportData.risk_assessment||{}).overall_risk_level||'TBC';
+      const lpsRec = (reportData.risk_assessment||{}).lps_class_justified||('Class '+m.lpsClass);
+      doc.setFillColor(234,243,222); doc.roundedRect(ML,y,CW,10,2,2,'F');
+      doc.setTextColor(59,109,17); doc.setFontSize(8); doc.setFont('helvetica','bold');
+      doc.text('Based on this provisional assessment, the site requires a formal Lightning Protection System.', ML+4, y+4.5);
+      doc.text('Overall risk level: '+ctaRl+'    Recommended LPS: '+lpsRec, ML+4, y+8.5); y+=14;
+
+      // Intro paragraph
+      const introText = 'The provisional assessment above is based on information provided without a site visit. Before a certified Lightning Protection System can be designed and installed with confidence, a formal site audit is required. This is the only commitment at this stage — the full engineering design and installation will be quoted separately following the audit.';
+      const introLines = doc.splitTextToSize(introText, CW);
+      doc.setFontSize(8.5); doc.setFont('helvetica','normal'); doc.setTextColor(...BLACK);
+      doc.text(introLines, ML, y); y += introLines.length * 4.8 + 6;
+
+      // What the audit includes
+      y=chk(y,30); secH(y,'What the Site Audit Includes'); y+=10;
+      const auditItems = [
+        ['Physical Site Inspection', 'On-site review of all structures, confirming dimensions, structural suitability, existing earthing, and conductor routing options.'],
+        ['Soil Resistivity Assessment', 'Preliminary assessment of ground conditions to inform the earthing electrode design and flag any high-resistivity areas.'],
+        ['Audit Report', 'Written summary of findings, confirming or revising the provisional LPS class recommendation.'],
+        ['Design & Installation Proposal', 'Following the audit, Estac will issue a fixed-price quotation covering full LPS design, supply and installation.'],
+      ];
+      auditItems.forEach(([title, desc]) => {
+        y=chk(y,16);
+        doc.setFillColor(...GOLD); doc.rect(ML,y,2,10,'F');
+        doc.setTextColor(...NAVY); doc.setFontSize(8); doc.setFont('helvetica','bold');
+        doc.text(title, ML+5, y+4);
+        const dl = doc.splitTextToSize(desc, CW-8);
+        doc.setFontSize(7.5); doc.setFont('helvetica','normal'); doc.setTextColor(...BLACK);
+        doc.text(dl, ML+5, y+8.5);
+        y += Math.max(14, dl.length*4+10);
+      });
+
+      // Fee
+      y=chk(y,20); y+=4;
+      doc.setFillColor(...NAVY); doc.roundedRect(ML,y,CW,18,2,2,'F');
+      doc.setTextColor(...GOLD); doc.setFontSize(7); doc.setFont('helvetica','bold');
+      doc.text('SITE AUDIT FEE', ML+4, y+5);
+      doc.setTextColor(220,215,200); doc.setFontSize(8.5); doc.setFont('helvetica','normal');
+      doc.text('Site Audit — Single Site Visit (incl. inspection, soil assessment & audit report)', ML+4, y+10);
+      doc.setTextColor(180,172,150); doc.setFontSize(7); doc.text('Travel & accommodation charged at cost. Fee to be confirmed prior to acceptance.', ML+4, y+14.5);
+      doc.setTextColor(...GOLD); doc.setFontSize(11); doc.setFont('helvetica','bold');
+      doc.text('From R '+fmt(5000)+' excl. VAT', PW-MR, y+10, {align:'right'});
+      doc.setFontSize(7.5); doc.setTextColor(180,172,150); doc.text('R '+fmt(5750)+' incl. VAT', PW-MR, y+15, {align:'right'});
+      y+=24;
+
+      // What you are agreeing to
+      y=chk(y,20); secH(y,'What You Are Agreeing To'); y+=8;
+      const agreeText = 'By signing below, you are authorising Estac Engineering to carry out the site audit only. You are not committing to the full LPS design, material supply, installation, or any costs beyond the audit fee and travel. The full engineering proposal will be presented after the audit and you retain full discretion to proceed or not at that stage.';
+      const agreeLines = doc.splitTextToSize(agreeText, CW);
+      doc.setFontSize(8.5); doc.setFont('helvetica','normal'); doc.setTextColor(...BLACK);
+      doc.text(agreeLines, ML, y); y += agreeLines.length * 4.8 + 8;
+
+      // Acceptance block
+      y=chk(y,60);
+      doc.setFillColor(...GOLDL); doc.setDrawColor(...GOLD); doc.setLineWidth(0.5);
+      doc.roundedRect(ML,y,CW,58,2,2,'FD');
+      doc.setTextColor(...NAVY); doc.setFontSize(8); doc.setFont('helvetica','bold');
+      doc.text('ACCEPTANCE — SITE AUDIT', ML+4, y+7); y+=12;
+      const fields = [['Client / Company','Date'],['Name','Signature']];
+      fields.forEach(row => {
+        row.forEach((label, col) => {
+          const x = ML+4 + col*(CW/2);
+          doc.setFontSize(7); doc.setFont('helvetica','normal'); doc.setTextColor(...MGREY);
+          doc.text(label.toUpperCase(), x, y);
+          doc.setDrawColor(...MGREY); doc.setLineWidth(0.3);
+          doc.line(x, y+10, x+CW/2-8, y+10);
+        });
+        y+=16;
+      });
+      doc.setFontSize(7); doc.setFont('helvetica','normal'); doc.setTextColor(122,92,16);
+      const consent = 'I / We authorise Estac Engineering to proceed with a site audit for the above property. The audit fee and agreed travel costs are payable on completion of the audit. This acceptance does not commit me / us to any further works or expenditure beyond the audit.';
+      const cl = doc.splitTextToSize(consent, CW-8);
+      doc.text(cl, ML+4, y);
+
       doc.save(m.docRef+'_Provisional_LPS_Risk_Assessment.pdf');
     } catch(err) { alert('PDF export failed: '+err.message); }
     finally { const btn=document.getElementById('exportBtn');btn.disabled=false;btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Export PDF Report'; }
@@ -1408,8 +1563,35 @@ Ensure qty × rate = amount for every item.`;
     }
   })();
 
-  // Expose all functions used in onclick attributes to global scope
-  window.selectLPS      = selectLPS;
+  function saveBoqCSV() {
+    if (!reportData) return;
+    const m = reportData._meta;
+    const active = boqActiveItems();
+    const total = boqRunningTotal();
+    const rows = [
+      ['Item','Description','Unit','Qty','Rate (ZAR excl.)','Amount (ZAR excl.)'],
+      ...active.map((item, i) => [
+        String(i + 1),
+        '"' + (item.description || '').replace(/"/g, '""') + '"',
+        item.unit,
+        item.qty,
+        item.rate,
+        item.amount
+      ]),
+      ['','','','','TOTAL (excl. VAT)', total],
+      ['','','','','VAT @ 15%', Math.round(total * 0.15 * 100) / 100],
+      ['','','','','TOTAL (incl. VAT)', Math.round(total * 1.15 * 100) / 100],
+    ];
+    const csv = rows.map(r => r.join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = (m ? m.docRef : 'EST-LPS') + '_BOQ_edited.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+  window.saveBoqCSV = saveBoqCSV;
   window.switchTab      = switchTab;
   window.generateReport = generateReport;
   window.exportPDF      = exportPDF;
