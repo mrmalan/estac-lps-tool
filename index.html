@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -801,6 +802,86 @@ Ensure qty × rate = amount for every item.`;
         <span>Estac Engineering (Pty) Ltd</span>
       </div>`;
 
+    // Store BOQ state globally for live editing
+    window._boqState = {
+      items: boqItems.map((item, idx) => ({ ...item, _id: idx, _excluded: false })),
+      added: []
+    };
+
+    function boqActiveItems() {
+      return [
+        ...window._boqState.items.filter(i => !i._excluded),
+        ...window._boqState.added
+      ];
+    }
+
+    function boqRunningTotal() {
+      return boqActiveItems().reduce((s, i) => s + Number(i.amount || 0), 0);
+    }
+
+    function refreshBoqTotal() {
+      const el = document.getElementById('boq-running-total');
+      if (el) el.textContent = 'R ' + fmt(boqRunningTotal());
+    }
+
+    function toggleBoqItem(idx) {
+      const item = window._boqState.items[idx];
+      if (!item) return;
+      item._excluded = !item._excluded;
+      const row = document.getElementById('boq-row-' + idx);
+      if (row) {
+        if (item._excluded) {
+          row.style.opacity = '0.4';
+          row.style.textDecoration = 'line-through';
+          row.style.background = 'var(--surface2)';
+        } else {
+          row.style.opacity = '1';
+          row.style.textDecoration = 'none';
+          row.style.background = '';
+        }
+      }
+      refreshBoqTotal();
+    }
+
+    function removeAddedItem(addedIdx) {
+      window._boqState.added.splice(addedIdx, 1);
+      renderAddedItems();
+      refreshBoqTotal();
+    }
+
+    function renderAddedItems() {
+      const container = document.getElementById('boq-added-rows');
+      if (!container) return;
+      container.innerHTML = window._boqState.added.map((item, i) => `
+        <tr style="background:rgba(26,106,74,0.04);border-left:3px solid var(--green-text);">
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--green-text);">+</td>
+          <td>${item.description}</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:11px;">${item.unit}</td>
+          <td style="text-align:right;font-family:'IBM Plex Mono',monospace;font-size:11px;">${item.qty}</td>
+          <td style="text-align:right;font-family:'IBM Plex Mono',monospace;font-size:11px;">${fmt(item.rate)}</td>
+          <td style="text-align:right;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;">${fmt(item.amount)}</td>
+          <td style="text-align:center;padding:4px 6px;">
+            <button onclick="removeAddedItem(${i})" style="background:none;border:none;cursor:pointer;color:#C0392B;font-size:11px;padding:2px 4px;" title="Remove">&#10005;</button>
+          </td>
+        </tr>`).join('');
+    }
+
+    function addBoqItem() {
+      const desc = document.getElementById('add-desc')?.value.trim();
+      const unit = document.getElementById('add-unit')?.value.trim() || 'Allow';
+      const qty  = parseFloat(document.getElementById('add-qty')?.value) || 1;
+      const rate = parseFloat(document.getElementById('add-rate')?.value) || 0;
+      if (!desc) { alert('Please enter a description for the item.'); return; }
+      const amount = qty * rate;
+      const nextNum = window._boqState.items.length + window._boqState.added.length + 1;
+      window._boqState.added.push({ item: String(nextNum), description: desc, unit, qty, rate, amount });
+      renderAddedItems();
+      refreshBoqTotal();
+      document.getElementById('add-desc').value = '';
+      document.getElementById('add-qty').value = '';
+      document.getElementById('add-rate').value = '';
+    }
+
     document.getElementById('tab-boq').innerHTML = `
       <div class="doc-header">
         <div><div class="doc-logo">ESTAC</div><div class="doc-sub">Engineering</div></div>
@@ -809,21 +890,65 @@ Ensure qty × rate = amount for every item.`;
       <div class="doc-title">Provisional Bill of Quantities — LPS Class ${m.lpsClass}</div>
       <div class="doc-subtitle">${m.siteName} &nbsp;·&nbsp; ${m.siteLocation}</div>
       <div class="preliminary-banner">&#9888; Provisional Rates · Subject to Site Survey, Final Design &amp; Supplier Quotation</div>
-      <table class="boq-table">
-        <colgroup><col style="width:42px"/><col/><col style="width:50px"/><col style="width:50px"/><col style="width:100px"/><col style="width:110px"/></colgroup>
-        <tr><th>Item</th><th>Description</th><th>Unit</th><th style="text-align:right">Qty</th><th style="text-align:right">Rate (ZAR)</th><th style="text-align:right">Amount (ZAR)</th></tr>
-        ${boqItems.map(i => `<tr>
-          <td style="font-family:'IBM Plex Mono',monospace;font-size:11px;">${i.item}</td>
-          <td>${i.description}</td>
-          <td style="font-family:'IBM Plex Mono',monospace;font-size:11px;">${i.unit}</td>
-          <td style="text-align:right;font-family:'IBM Plex Mono',monospace;font-size:11px;">${i.qty}</td>
-          <td style="text-align:right;font-family:'IBM Plex Mono',monospace;font-size:11px;">${fmt(i.rate)}</td>
-          <td style="text-align:right;font-family:'IBM Plex Mono',monospace;font-size:11px;">${fmt(i.amount)}</td>
+      <div style="background:var(--blue-bg);border:0.5px solid var(--blue-text);border-radius:var(--radius);padding:9px 13px;margin-bottom:1rem;font-size:11.5px;color:var(--blue-text);">
+        &#9432; <strong>Working view:</strong> Tick any item to exclude it from the total and from client exports. Struck-through items remain visible here but will not appear in the PDF or Word document.
+      </div>
+      <table class="boq-table" style="table-layout:fixed;">
+        <colgroup><col style="width:32px"/><col style="width:36px"/><col/><col style="width:50px"/><col style="width:44px"/><col style="width:96px"/><col style="width:104px"/></colgroup>
+        <tr>
+          <th title="Tick to exclude from client export">Excl.</th>
+          <th>Item</th><th>Description</th><th>Unit</th>
+          <th style="text-align:right">Qty</th>
+          <th style="text-align:right">Rate (ZAR)</th>
+          <th style="text-align:right">Amount (ZAR)</th>
+        </tr>
+        ${window._boqState.items.map((item, idx) => `
+        <tr id="boq-row-${idx}" style="transition:opacity 0.2s,text-decoration 0.2s;">
+          <td style="text-align:center;padding:4px 6px;">
+            <input type="checkbox" onchange="toggleBoqItem(${idx})" title="Exclude from client export"
+              style="width:14px;height:14px;accent-color:var(--red-text);cursor:pointer;">
+          </td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:11px;">${item.item}</td>
+          <td>${item.description}</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:11px;">${item.unit}</td>
+          <td style="text-align:right;font-family:'IBM Plex Mono',monospace;font-size:11px;">${item.qty}</td>
+          <td style="text-align:right;font-family:'IBM Plex Mono',monospace;font-size:11px;">${fmt(item.rate)}</td>
+          <td style="text-align:right;font-family:'IBM Plex Mono',monospace;font-size:11px;">${fmt(item.amount)}</td>
         </tr>`).join('')}
+        <tbody id="boq-added-rows"></tbody>
       </table>
-      <div class="boq-total"><span>Provisional Total (excl. VAT):</span><strong>R ${fmt(boqTotal)}</strong></div>
+
+      <div class="boq-total">
+        <span>Provisional Total (excl. VAT):</span>
+        <strong id="boq-running-total">R ${fmt(boqRunningTotal())}</strong>
+      </div>
+
       ${boqNotes ? `<p class="prose" style="margin-top:0.8rem;font-size:11px;">${boqNotes}</p>` : ''}
-      <div class="doc-footer">
+
+      <div style="margin-top:1.5rem;background:var(--surface2);border-radius:var(--radius);padding:1rem 1.25rem;border:0.5px solid var(--border2);">
+        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--navy);margin-bottom:10px;">+ Add item not included above</div>
+        <div style="display:grid;grid-template-columns:1fr 80px 60px 100px auto;gap:8px;align-items:end;">
+          <div>
+            <label style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:4px;">Description</label>
+            <input type="text" id="add-desc" placeholder="e.g. Additional earth rod at pump room" style="font-size:12px;">
+          </div>
+          <div>
+            <label style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:4px;">Unit</label>
+            <input type="text" id="add-unit" placeholder="Each" style="font-size:12px;">
+          </div>
+          <div>
+            <label style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:4px;">Qty</label>
+            <input type="number" id="add-qty" placeholder="1" min="0" style="font-size:12px;">
+          </div>
+          <div>
+            <label style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:4px;">Rate (ZAR excl.)</label>
+            <input type="number" id="add-rate" placeholder="0.00" min="0" style="font-size:12px;">
+          </div>
+          <button onclick="addBoqItem()" style="padding:9px 16px;background:var(--navy);color:var(--gold);border:none;border-radius:var(--radius);font-family:'IBM Plex Sans',sans-serif;font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;">+ Add</button>
+        </div>
+      </div>
+
+      <div class="doc-footer" style="margin-top:1rem;">
         <span>${m.docRef}-BOQ · Rev 0 Provisional</span>
         <span>Rates to be confirmed against Riken / supplier quotations following site survey</span>
       </div>`;
@@ -1084,8 +1209,9 @@ Ensure qty × rate = amount for every item.`;
       doc.addPage();pageNum++;hdr(pageNum);ftr();y=32;
       doc.setFillColor(...GOLD);doc.rect(ML,y,CW,8,'F');doc.setTextColor(...NAVY);doc.setFontSize(9);doc.setFont('helvetica','bold');doc.text('ANNEX A  —  PROVISIONAL BILL OF QUANTITIES',ML+4,y+5.5);y+=13;
       doc.setTextColor(...NAVY);doc.setFontSize(10);doc.setFont('helvetica','bold');doc.text('LPS Class '+m.lpsClass+' — '+m.siteName,ML,y);y+=5;doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(...MGREY);doc.text(m.siteLocation+'  |  '+m.docRef+'-BOQ  |  Rev 0  |  '+today,ML,y);y+=4;doc.setFillColor(...GOLDL);doc.setDrawColor(...GOLD);doc.setLineWidth(0.4);doc.roundedRect(ML,y,CW,7,1,1,'FD');doc.setTextColor(122,92,16);doc.setFontSize(7);doc.setFont('helvetica','bold');doc.text('PROVISIONAL RATES — Subject to site survey, final design and supplier quotation.',ML+3,y+4.5);y+=11;
-      doc.autoTable({startY:y,head:[['Item','Description','Unit','Qty','Rate (ZAR)','Amount (ZAR)']],body:boqItems.map(i=>[i.item,i.description,i.unit,String(i.qty),fmt(i.rate),fmt(i.amount)]),margin:{left:ML,right:MR},styles:{fontSize:8,cellPadding:2.5,textColor:BLACK,lineColor:[220,217,210],lineWidth:0.3,overflow:'linebreak'},headStyles:{fillColor:NAVY,textColor:GOLD,fontStyle:'bold',fontSize:7.5},alternateRowStyles:{fillColor:LGREY},columnStyles:{0:{cellWidth:12,fontStyle:'bold',textColor:NAVY},1:{cellWidth:'auto'},2:{cellWidth:14,halign:'center'},3:{cellWidth:12,halign:'right'},4:{cellWidth:28,halign:'right'},5:{cellWidth:30,halign:'right',fontStyle:'bold'}},didAddPage:function(){pageNum++;hdr(pageNum);ftr();}});
-      y=doc.lastAutoTable.finalY+4;y=chk(y,16);doc.setFillColor(...NAVY);doc.rect(ML,y,CW,10,'F');doc.setFillColor(...GOLD);doc.rect(ML,y,CW,0.8,'F');doc.setTextColor(...GOLD);doc.setFontSize(8.5);doc.setFont('helvetica','bold');doc.text('PROVISIONAL TOTAL (EXCL. VAT)',ML+4,y+6.5);doc.setFontSize(11);doc.text('R '+fmt(boqTotal),PW-MR,y+6.8,{align:'right'});y+=14;doc.setFontSize(7.5);doc.setFont('helvetica','italic');doc.setTextColor(...MGREY);doc.text('VAT @ 15%: R '+fmt(boqTotal*0.15)+'  |  Total incl. VAT: R '+fmt(boqTotal*1.15),ML,y);
+      doc.autoTable({startY:y,head:[['Item','Description','Unit','Qty','Rate (ZAR)','Amount (ZAR)']],body:boqActiveItems().map(i=>[i.item,i.description,i.unit,String(i.qty),fmt(i.rate),fmt(i.amount)]),margin:{left:ML,right:MR},styles:{fontSize:8,cellPadding:2.5,textColor:BLACK,lineColor:[220,217,210],lineWidth:0.3,overflow:'linebreak'},headStyles:{fillColor:NAVY,textColor:GOLD,fontStyle:'bold',fontSize:7.5},alternateRowStyles:{fillColor:LGREY},columnStyles:{0:{cellWidth:12,fontStyle:'bold',textColor:NAVY},1:{cellWidth:'auto'},2:{cellWidth:14,halign:'center'},3:{cellWidth:12,halign:'right'},4:{cellWidth:28,halign:'right'},5:{cellWidth:30,halign:'right',fontStyle:'bold'}},didAddPage:function(){pageNum++;hdr(pageNum);ftr();}});
+      const activeTotal = boqRunningTotal();
+      y=doc.lastAutoTable.finalY+4;y=chk(y,16);doc.setFillColor(...NAVY);doc.rect(ML,y,CW,10,'F');doc.setFillColor(...GOLD);doc.rect(ML,y,CW,0.8,'F');doc.setTextColor(...GOLD);doc.setFontSize(8.5);doc.setFont('helvetica','bold');doc.text('PROVISIONAL TOTAL (EXCL. VAT)',ML+4,y+6.5);doc.setFontSize(11);doc.text('R '+fmt(activeTotal),PW-MR,y+6.8,{align:'right'});y+=14;doc.setFontSize(7.5);doc.setFont('helvetica','italic');doc.setTextColor(...MGREY);doc.text('VAT @ 15%: R '+fmt(activeTotal*0.15)+'  |  Total incl. VAT: R '+fmt(activeTotal*1.15),ML,y);
       doc.save(m.docRef+'_Provisional_LPS_Risk_Assessment.pdf');
     } catch(err) { alert('PDF export failed: '+err.message); }
     finally { const btn=document.getElementById('exportBtn');btn.disabled=false;btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Export PDF Report'; }
@@ -1103,8 +1229,8 @@ Ensure qty × rate = amount for every item.`;
       const d = reportData; const m = d._meta;
       const ld = d.lightning_data || {}; const ra = d.risk_assessment || {};
       const bod = d.basis_of_design || {};
-      const boqItems = (d.boq && d.boq.items) ? d.boq.items : [];
-      const boqTotal = boqItems.reduce((s, i) => s + Number(i.amount || 0), 0);
+      const activeBoqItems = boqActiveItems();
+      const activeBoqTotal = boqRunningTotal();
       const today = new Date().toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' });
       const NAVY='1A3A5C',GOLD='C8A84B',LGREY='F0EDE6',WHITE='FFFFFF';
       function para(text,opts){return new Paragraph({children:[new TextRun({text:String(text||''),size:20,...(opts||{})})],spacing:{after:80}});}
@@ -1143,6 +1269,27 @@ Ensure qty × rate = amount for every item.`;
         new Paragraph({children:[new TextRun({text:'ANNEX A  \u2014  PROVISIONAL BILL OF QUANTITIES',bold:true,color:NAVY,size:28})],shading:{type:ShadingType.SOLID,color:GOLD,fill:GOLD},spacing:{before:0,after:120},indent:{left:120}}),
         para('LPS Class '+m.lpsClass+' \u2014 '+m.siteName,{bold:true,color:NAVY,size:22}),
         para(m.siteLocation+'  |  '+m.docRef+'-BOQ  |  Rev 0  |  '+today,{color:'888888',size:16}),
+        new Paragraph({text:'',spacing:{after:120}}),
+        new Table({
+          width:{size:100,type:WidthType.PERCENTAGE},
+          rows:[
+            new TableRow({children:['Item','Description','Unit','Qty','Rate (ZAR)','Amount (ZAR)'].map(h=>new TableCell({children:[new Paragraph({children:[new TextRun({text:h,bold:true,color:WHITE,size:17})]})],shading:{type:ShadingType.SOLID,color:NAVY,fill:NAVY},margins:{top:60,bottom:60,left:80,right:80}}))}),
+            ...activeBoqItems.map((item,idx)=>new TableRow({children:[
+              new TableCell({children:[new Paragraph({children:[new TextRun({text:String(item.item),bold:true,color:NAVY,size:17})]})],shading:idx%2===1?{type:ShadingType.SOLID,color:LGREY,fill:LGREY}:undefined,margins:{top:60,bottom:60,left:80,right:80}}),
+              new TableCell({children:[new Paragraph({children:[new TextRun({text:item.description,size:17})]})],shading:idx%2===1?{type:ShadingType.SOLID,color:LGREY,fill:LGREY}:undefined,margins:{top:60,bottom:60,left:80,right:80}}),
+              new TableCell({children:[new Paragraph({children:[new TextRun({text:item.unit,size:17})]})],shading:idx%2===1?{type:ShadingType.SOLID,color:LGREY,fill:LGREY}:undefined,margins:{top:60,bottom:60,left:80,right:80}}),
+              new TableCell({children:[new Paragraph({children:[new TextRun({text:String(item.qty),size:17})]})],shading:idx%2===1?{type:ShadingType.SOLID,color:LGREY,fill:LGREY}:undefined,margins:{top:60,bottom:60,left:80,right:80}}),
+              new TableCell({children:[new Paragraph({children:[new TextRun({text:fmt(item.rate),size:17})]})],shading:idx%2===1?{type:ShadingType.SOLID,color:LGREY,fill:LGREY}:undefined,margins:{top:60,bottom:60,left:80,right:80}}),
+              new TableCell({children:[new Paragraph({children:[new TextRun({text:fmt(item.amount),bold:true,size:17})]})],shading:idx%2===1?{type:ShadingType.SOLID,color:LGREY,fill:LGREY}:undefined,margins:{top:60,bottom:60,left:80,right:80}}),
+            ]})),
+            new TableRow({children:[
+              new TableCell({children:[new Paragraph({children:[new TextRun({text:'PROVISIONAL TOTAL (EXCL. VAT)',bold:true,color:WHITE,size:18})]})],columnSpan:5,shading:{type:ShadingType.SOLID,color:NAVY,fill:NAVY},margins:{top:80,bottom:80,left:100,right:100}}),
+              new TableCell({children:[new Paragraph({children:[new TextRun({text:'R '+fmt(activeBoqTotal),bold:true,color:GOLD,size:20})]})],shading:{type:ShadingType.SOLID,color:NAVY,fill:NAVY},margins:{top:80,bottom:80,left:100,right:100}}),
+            ]})
+          ]
+        }),
+        new Paragraph({text:'',spacing:{after:120}}),
+        para('VAT @ 15%: R '+fmt(activeBoqTotal*0.15)+'  |  Total incl. VAT: R '+fmt(activeBoqTotal*1.15),{italics:true,color:'888888'}),
       ];
       const doc2=new Document({creator:'Estac Engineering',title:m.docRef+' Provisional LPS Risk Assessment',sections:[{properties:{page:{margin:{top:720,bottom:720,left:900,right:900}}},children}]});
       const blob=await Packer.toBlob(doc2);
